@@ -227,4 +227,14 @@ void main() {
       expect(normalizeUid('  123456  '), '123456');
       expect(normalizeUid('abc'), 'abc');
     });
+  });
+  test('拆分出来的开始事件会回填区间', () {
+    final t1 = DateTime.parse('2026-11-16T02:00:00+08:00');
+    final t2 = DateTime.parse('2026-11-29T19:59:00+08:00');
+    final start = _ev(id: 'b1-start', title: '活动开启', start: t1, hash: 'h1');
+    final end = _ev(id: 'b1-end', title: '活动结束', end: t2, hash: 'h1');
+
+    final filled = backfillRanges([start, end]);
+    expect(filled.first.displayEnd, t2);
+    expect(filled.first.start, t1);
   });}

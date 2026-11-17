@@ -206,7 +206,7 @@ Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent eve
         const SizedBox(height: 16),
         _MetaRow(label: '类型', value: event.type),
         if ((event.version ?? '').isNotEmpty) _MetaRow(label: '版本', value: event.version!),
-        _MetaRow(label: '时间', value: eventRange(event.start, event.end)),
+        _MetaRow(label: '时间', value: eventRange(event.start, event.end ?? event.displayEnd)),
         _MetaRow(label: '剩余', value: countdownOf(event.due).text),
         const SizedBox(height: 18),
         if (event.tags.isNotEmpty) ...[
