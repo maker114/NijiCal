@@ -4,7 +4,7 @@ import '../app_state.dart';
 import '../format.dart';
 import '../model.dart';
 import '../sheets.dart';
-import '../theme.dart';
+
 import '../widgets.dart';
 import 'game_detail_page.dart';
 
@@ -23,16 +23,6 @@ class LibraryScreen extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            TextField(
-              onChanged: state.setSearch,
-              style: Theme.of(context).textTheme.bodyMedium,
-              decoration: const InputDecoration(
-                hintText: '搜索游戏…',
-                prefixIcon: Icon(Icons.search, size: 20),
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 12),
             Text(
               '已绑定 ${state.boundCount} 个官号 · 绑定只存在本机',
               style: Theme.of(context).textTheme.labelSmall,
@@ -88,19 +78,7 @@ class _GameCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(AppShapes.nestedRadius),
-                ),
-                child: Text(
-                  game.initial,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: accent),
-                ),
-              ),
+              GameAvatar(game: game, color: accent, size: 40),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

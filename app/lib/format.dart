@@ -33,15 +33,15 @@ class Countdown {
   final int level;
 }
 
+/// 只给“还有几天”，不再报到小时：日历上扫一眼就够，精确时刻在详情里看。
 Countdown countdownOf(DateTime due) {
   final h = hoursUntil(due);
   if (h < 0) return const Countdown('已过期', 0);
-  if (h < 1) return Countdown('剩 ${(h * 60).round().clamp(1, 60)} 分钟', 1);
-  if (h < 3) return Countdown('剩 ${h.floor()} 小时 ${((h % 1) * 60).round()} 分', 1);
-  if (h < 24) return Countdown('剩 ${h.floor()} 小时 ${((h % 1) * 60).round()} 分', 2);
-  final d = h ~/ 24;
-  final rest = (h % 24).round();
-  return Countdown(rest == 0 ? '剩 $d 天' : '剩 $d 天 $rest 小时', 3);
+  if (h < 1) return const Countdown('还有 1 小时', 1);
+  if (h < 3) return Countdown('还有 ${h.floor()} 小时', 1);
+  if (h < 24) return Countdown('还有 ${h.floor()} 小时', 2);
+  final days = (h / 24).ceil();
+  return Countdown('还有 $days 天', 3);
 }
 
 String reminderText(List<int> offsets) {

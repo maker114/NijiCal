@@ -124,10 +124,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    final now = DateTime.now();
-    expect(find.text('${now.year} 年 ${now.month} 月'), findsOneWidget);
+    // 主界面默认是列表：没有事件时给空态提示，底部导航仍在
+    expect(find.text('还没有日程'), findsOneWidget);
     expect(find.text('日历'), findsWidgets);
-    expect(find.text('今天'), findsWidgets);
+    expect(find.text('游戏库'), findsWidgets);
   });
 
   test('同一公告被多条动态解析时会去重', () {

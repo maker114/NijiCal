@@ -103,4 +103,26 @@ abstract class Prefs {
   static Future<void> saveGameAccents(Map<String, int> value) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_accentsKey, jsonEncode(value));
-  }}
+  }  static const _calendarViewKey = 'nijical.calendarView';
+  static const _showEndKey = 'nijical.showEndTime';
+
+  static Future<bool> loadCalendarView() async {
+    final sp = await SharedPreferences.getInstance();
+    return sp.getBool(_calendarViewKey) ?? false;
+  }
+
+  static Future<void> saveCalendarView(bool value) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setBool(_calendarViewKey, value);
+  }
+
+  static Future<bool> loadShowEndTime() async {
+    final sp = await SharedPreferences.getInstance();
+    return sp.getBool(_showEndKey) ?? false;
+  }
+
+  static Future<void> saveShowEndTime(bool value) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setBool(_showEndKey, value);
+  }
+}

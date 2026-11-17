@@ -39,6 +39,8 @@ class AppState extends ChangeNotifier {
   RangeFilter range = RangeFilter.month;
   String search = '';
   bool remindersOn = false;
+  bool calendarView = false;
+  bool showEndTime = false;
   int scheduledCount = 0;
   final List<String> corrections = [];
 
@@ -51,6 +53,8 @@ class AppState extends ChangeNotifier {
       ..clear()
       ..addAll(await Prefs.loadBindings());
     remindersOn = await Prefs.loadRemindersEnabled();
+    calendarView = await Prefs.loadCalendarView();
+    showEndTime = await Prefs.loadShowEndTime();
     gameAccents
       ..clear()
       ..addAll(await Prefs.loadGameAccents());
@@ -236,6 +240,17 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setCalendarView(bool value) {
+    calendarView = value;
+    Prefs.saveCalendarView(value);
+    notifyListeners();
+  }
+
+  void setShowEndTime(bool value) {
+    showEndTime = value;
+    Prefs.saveShowEndTime(value);
+    notifyListeners();
+  }
   void setReminders(bool value) {
     remindersOn = value;
     Prefs.saveRemindersEnabled(value);

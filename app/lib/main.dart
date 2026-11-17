@@ -6,6 +6,7 @@ import 'screens/calendar_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/bili_pages.dart';
 import 'screens/subscribe_screen.dart';
+import 'services/avatar_store.dart';
 import 'services/reminder_service.dart';
 import 'sheets.dart';
 import 'theme.dart';
@@ -48,6 +49,7 @@ class _NijiCalAppState extends State<NijiCalApp> {
     try {
       await themeController.restore();
       await state.restore();
+      await AvatarStore.load();
     } catch (_) {}
     await state.load();
     try {
@@ -206,6 +208,12 @@ class _ShellBodyState extends State<_ShellBody> {
                 }
               },
               icon: const Icon(Icons.refresh),
+            ),
+          if (tab == 0)
+            IconButton(
+              tooltip: widget.state.calendarView ? '切换为列表' : '切换为日历',
+              onPressed: () => widget.state.setCalendarView(!widget.state.calendarView),
+              icon: Icon(widget.state.calendarView ? Icons.view_list_outlined : Icons.calendar_month_outlined),
             ),
           if (tab == 0)
             IconButton(
