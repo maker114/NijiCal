@@ -99,8 +99,8 @@ class GameDetailPage extends StatelessWidget {
                 Text(
                   base == null
                       ? '还没有这个号的版本记录，先去订阅页刷新一次，才有日期可以推算。'
-                      : '以 ${base.month} 月 ${base.day} 日的版本为基准；'
-                          '预计下个版本 ${nextUpdate == null ? '—' : '${nextUpdate.month} 月 ${nextUpdate.day} 日'}。',
+                      : '以 ${md(base)} 的版本为基准；'
+                          '预计下个版本 ${nextUpdate == null ? '—' : md(nextUpdate)}。',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: base == null ? theme.colorScheme.error : null,
                   ),

@@ -342,7 +342,7 @@ class AppState extends ChangeNotifier {
     return withVersion.first.version;
   }
   /// 某款游戏、且符合当前「显示截止事件」开关的日程
-  List<GameEvent> visibleEventsOf(String gameId) => eventsOf(gameId)
+  List<GameEvent> visibleEventsOf(String gameId) => [...eventsOf(gameId), ...predictedEvents().where((e) => e.gameId == gameId)]
       .where((e) => showDeadlineEvents || !isDeadlineEvent(e))
       .toList();
 
