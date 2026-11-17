@@ -205,11 +205,13 @@ class EventRow extends StatelessWidget {
                     event.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall,
+                    style: event.predicted
+                        ? theme.textTheme.titleSmall?.copyWith(color: scheme.primary)
+                        : theme.textTheme.titleSmall,
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${event.type} · $timeText',
+                    '${event.predicted ? '预测 · ' : ''}${event.type} · $timeText',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall,

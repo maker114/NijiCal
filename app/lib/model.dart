@@ -102,6 +102,7 @@ class GameEvent {
     this.tags = const [],
     this.sourceHash,
     this.displayEnd,
+    this.predicted = false,
   });
 
   final String id;
@@ -130,6 +131,9 @@ class GameEvent {
   /// 但 due 仍然只看 start，不影响排序与环的位置。
   final DateTime? displayEnd;
 
+  /// 是否为「预测」事件（按版本周期推算，未经官方确认）
+  final bool predicted;
+
   /// 真正该被提醒的时刻：截止类用 end，开始类用 start
   DateTime get due => end ?? start!;
   bool get isDeadline => start == null;
@@ -150,6 +154,7 @@ class GameEvent {
         'version': version,
         'source_hash': sourceHash,
         'display_end': displayEnd?.toIso8601String(),
+        'predicted': predicted,
         'tags': tags,
         'revisions': [
           for (final r in revisions)
@@ -173,6 +178,7 @@ class GameEvent {
         version: j['version'] as String?,
         sourceHash: j['source_hash'] as String?,
         displayEnd: _parse(j['display_end'] as String?),
+        predicted: j['predicted'] as bool? ?? false,
         tags: ((j['tags'] as List?) ?? const []).cast<String>(),
         revisions: ((j['revisions'] as List?) ?? const [])
             .map((e) => Revision.fromJson(e as Map<String, dynamic>))
@@ -227,4 +233,50 @@ class NijiData {
           .toList(),
     );
   }
+}
+
+/// 每款游戏的预测设置：版本周期与前瞻提前量
+class PredictionSetting {
+  const PredictionSetting({
+    this.preview = false,
+    this.version = false,
+    this.cycleDays = 42,
+    this.leadDays = 7,
+  });
+
+  /// 是否预测下个版本的前瞻直播
+  final bool preview;
+
+  /// 是否预测下个版本更新
+  final bool version;
+
+  /// 上个版本更新之后第几天是下个版本更新
+  final int cycleDays;
+
+  /// 前瞻比版本更新提前几天
+  final int leadDays;
+
+  PredictionSetting copyWith({bool? preview, bool? version, int? cycleDays, int? leadDays}) =>
+      PredictionSetting(
+        preview: preview ?? this.preview,
+        version: version ?? this.version,
+        cycleDays: cycleDays ?? this.cycleDays,
+        leadDays: leadDays ?? this.leadDays,
+      );
+
+  bool get enabled => preview || version;
+
+  Map<String, dynamic> toJson() => {
+        'preview': preview,
+        'version': version,
+        'cycleDays': cycleDays,
+        'leadDays': leadDays,
+      };
+
+  factory PredictionSetting.fromJson(Map<String, dynamic> j) => PredictionSetting(
+        preview: j['preview'] as bool? ?? false,
+        version: j['version'] as bool? ?? false,
+        cycleDays: (j['cycleDays'] as num?)?.toInt() ?? 42,
+        leadDays: (j['leadDays'] as num?)?.toInt() ?? 7,
+      );
 }

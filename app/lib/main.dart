@@ -51,6 +51,7 @@ class _NijiCalAppState extends State<NijiCalApp> {
       await state.restore();
       await AvatarStore.load();
       await state.loadGames();
+      await state.loadPredictions();
     } catch (_) {}
     await state.load();
     try {

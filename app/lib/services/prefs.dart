@@ -166,14 +166,31 @@ abstract class Prefs {
     final sp = await SharedPreferences.getInstance();
     await sp.setStringList(_hiddenGamesKey, ids.toList());
   }
-  // 前瞻总结视频的缓存（按事件 id）
-  static Future<String?> loadPreviewSummary(String eventId) async {
+  // 每款游戏的预测设置
+  static const _predictionKey = 'nijical.predictions';
+
+  static Future<Map<String, PredictionSetting>> loadPredictions() async {
     final sp = await SharedPreferences.getInstance();
-    return sp.getString('nijical.preview.$eventId');
+    final raw = sp.getString(_predictionKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return {};
+      return {
+        for (final e in decoded.entries)
+          if (e.value is Map) '${e.key}': PredictionSetting.fromJson((e.value as Map).cast<String, dynamic>()),
+      };
+    } catch (_) {
+      return {};
+    }
   }
 
-  static Future<void> savePreviewSummary(String eventId, String json) async {
+  static Future<void> savePredictions(Map<String, PredictionSetting> value) async {
     final sp = await SharedPreferences.getInstance();
-    await sp.setString('nijical.preview.$eventId', json);
-  }
-}
+    await sp.setString(
+      _predictionKey,
+      jsonEncode({
+        for (final e in value.entries) e.key: e.value.toJson(),
+      }),
+    );
+  }}

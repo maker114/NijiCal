@@ -260,7 +260,8 @@ Map<String, List<Color>> marksByDate(
     final game = games[event.gameId];
     final base = game == null ? const Color(0xFF8A8A8A) : state.gameAccentOf(game);
     // 已过期的事件用低饱和度的同一支色，日历上仍能看出「那天有过什么」
-    final color = event.due.isBefore(DateTime.now()) ? _faded(base) : base;
+    // 过期事件统一用一个灰，不再按游戏着色，避免和未来事件抢注意力
+    final color = _isPast(event) ? const Color(0xFFC9C9C9) : base;
     marks.putIfAbsent(day, () => <Color>[]).add(color);
     if (marks[day]!.length > 3) {
       marks[day] = marks[day]!.take(3).toList();
@@ -423,12 +424,5 @@ class _DayCell extends StatelessWidget {
     );
   }
 }
-
-/// 过期事件在日历上的颜色：压低饱和度、抬一点亮度
-Color _faded(Color color) {
-  final hsl = HSLColor.fromColor(color);
-  return hsl
-      .withSaturation(hsl.saturation * 0.28)
-      .withLightness((hsl.lightness + 0.28).clamp(0.0, 1.0))
-      .toColor();
-}
+/// 事件是否已经过去（只用来决定日历上的颜色）
+bool _isPast(GameEvent event) => event.due.isBefore(DateTime.now());

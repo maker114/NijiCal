@@ -15,7 +15,6 @@ import 'services/ics_service.dart';
 import 'theme.dart';
 import 'theme_controller.dart';
 import 'widgets.dart';
-import 'widgets/missed_preview.dart';
 
 /// 统一的底部抽屉：白底（surfaceContainerLow）、只圆上缘 28、一条抓取条。
 Future<T?> _showSheet<T>(BuildContext context, {required Widget child, bool scrollable = false}) {
@@ -218,16 +217,21 @@ Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent eve
           ],
         ),
         const SizedBox(height: 4),
+        if (event.predicted)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              '预测内容（未经官方确认）',
+              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary),
+            ),
+          ),
         Text(event.title, style: theme.textTheme.titleLarge),
         const SizedBox(height: 16),
         _MetaRow(label: '类型', value: event.type),
         if ((event.version ?? '').isNotEmpty) _MetaRow(label: '版本', value: event.version!),
         _MetaRow(label: '时间', value: eventRange(event.start, event.end ?? event.displayEnd)),
         _MetaRow(label: '剩余', value: countdownOf(event.due).text),
-        if (event.type == '前瞻直播' && event.start != null && event.start!.isBefore(DateTime.now())) ...[
-          const SizedBox(height: 10),
-          MissedPreviewCard(state: state, event: event, game: game),
-        ],
+
         const SizedBox(height: 18),
         if (event.tags.isNotEmpty) ...[
           const SizedBox(height: 12),

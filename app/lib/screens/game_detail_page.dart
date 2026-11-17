@@ -57,6 +57,7 @@ class GameDetailPage extends StatelessWidget {
           final theme = Theme.of(context);
           final accent = state.gameAccentOf(game);
           final uid = state.bindings[game.id];
+          final setting = state.predictionOf(game.id);
           return Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
             child: Column(
@@ -88,6 +89,55 @@ class GameDetailPage extends StatelessWidget {
                           ),
                         ),
                       ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Text('预测', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 4),
+                Text(
+                  '按上个版本更新的日期往后推。官方消息一到，预测会被真实事件替换。',
+                  style: theme.textTheme.labelSmall,
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: setting.version,
+                  onChanged: (v) => state.setPrediction(game.id, setting.copyWith(version: v)),
+                  title: Text('预测版本更新', style: theme.textTheme.bodyMedium),
+                  subtitle: Text(
+                    '上个版本更新后第 ${setting.cycleDays} 天',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: setting.preview,
+                  onChanged: (v) => state.setPrediction(game.id, setting.copyWith(preview: v)),
+                  title: Text('预测前瞻直播', style: theme.textTheme.bodyMedium),
+                  subtitle: Text(
+                    '版本更新前 ${setting.leadDays} 天',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(child: Text('版本周期', style: theme.textTheme.bodySmall)),
+                    _Stepper(
+                      value: setting.cycleDays,
+                      min: 14,
+                      max: 120,
+                      onChange: (v) => state.setPrediction(game.id, setting.copyWith(cycleDays: v)),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Expanded(child: Text('前瞻提前', style: theme.textTheme.bodySmall)),
+                    _Stepper(
+                      value: setting.leadDays,
+                      min: 1,
+                      max: 30,
+                      onChange: (v) => state.setPrediction(game.id, setting.copyWith(leadDays: v)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 18),
@@ -329,6 +379,40 @@ class _ExpiredBlockState extends State<_ExpiredBlock> {
                 const Divider(height: 1),
               ],
             ),
+      ],
+    );
+  }
+}
+
+/// 小的数字步进器：左右按钮改值，中间显示
+class _Stepper extends StatelessWidget {
+  const _Stepper({required this.value, required this.min, required this.max, required this.onChange});
+
+  final int value;
+  final int min;
+  final int max;
+  final ValueChanged<int> onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          onPressed: value > min ? () => onChange(value - 1) : null,
+          icon: const Icon(Icons.remove_circle_outline, size: 20),
+        ),
+        SizedBox(
+          width: 52,
+          child: Text('$value 天', textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          onPressed: value < max ? () => onChange(value + 1) : null,
+          icon: const Icon(Icons.add_circle_outline, size: 20),
+        ),
       ],
     );
   }

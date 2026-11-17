@@ -169,9 +169,103 @@ class AppState extends ChangeNotifier {
       e.title.endsWith('（截止）') ||
       const {'活动结束', '卡池结束', '兑换码截止', '补偿领取截止'}.contains(e.type);
 
+  /// 每款游戏的预测设置
+  final Map<String, PredictionSetting> predictions = {};
+
+  Future<void> loadPredictions() async {
+    predictions
+      ..clear()
+      ..addAll(await Prefs.loadPredictions());
+    notifyListeners();
+  }
+
+  PredictionSetting predictionOf(String gameId) =>
+      predictions[gameId] ?? const PredictionSetting();
+
+  void setPrediction(String gameId, PredictionSetting value) {
+    predictions[gameId] = value;
+    Prefs.savePredictions(predictions);
+    notifyListeners();
+  }
+
+  /// 按「上个版本更新 + 版本周期」推算出的前瞻与版本更新。
+  /// 一旦出现同类型的真实事件（±2 天内），就不再输出预测。
+  List<GameEvent> predictedEvents() {
+    final now = DateTime.now();
+    final out = <GameEvent>[];
+
+    for (final entry in predictions.entries) {
+      final setting = entry.value;
+      if (!setting.enabled) continue;
+      final game = gameMap[entry.key];
+      if (game == null) continue;
+
+      final updates = allEvents
+          .where((e) => e.gameId == entry.key && e.type == '版本更新' && !e.predicted)
+          .toList()
+        ..sort((a, b) => b.due.compareTo(a.due));
+      if (updates.isEmpty) continue;
+
+      final last = updates.first.due;
+      final nextUpdate = last.add(Duration(days: setting.cycleDays));
+
+      bool confirmed(String type, DateTime day) => allEvents.any((e) =>
+          e.gameId == entry.key &&
+          e.type == type &&
+          !e.predicted &&
+          e.due.difference(day).inDays.abs() <= 2);
+
+      if (setting.version && nextUpdate.isAfter(now) && !confirmed('版本更新', nextUpdate)) {
+        out.add(_predictedEvent(
+          id: 'pred-${entry.key}-update',
+          game: game,
+          type: '版本更新',
+          title: '${game.short} 下个版本更新（预测）',
+          due: nextUpdate,
+          summary: '按上个版本更新（${last.month}月${last.day}日）推算：周期约 ${setting.cycleDays} 天。',
+        ));
+      }
+
+      final previewDay = nextUpdate.subtract(Duration(days: setting.leadDays));
+      if (setting.preview && previewDay.isAfter(now) && !confirmed('前瞻直播', previewDay)) {
+        out.add(_predictedEvent(
+          id: 'pred-${entry.key}-preview',
+          game: game,
+          type: '前瞻直播',
+          title: '${game.short} 下个版本前瞻（预测）',
+          due: previewDay,
+          summary: '比版本更新（${nextUpdate.month}月${nextUpdate.day}日）提前 ${setting.leadDays} 天。',
+        ));
+      }
+    }
+    return out;
+  }
+
+  GameEvent _predictedEvent({
+    required String id,
+    required Game game,
+    required String type,
+    required String title,
+    required DateTime due,
+    required String summary,
+  }) =>
+      GameEvent(
+        id: id,
+        gameId: game.id,
+        type: type,
+        title: title,
+        start: due,
+        status: EventStatus.tentative,
+        confidence: 40,
+        summary: summary,
+        tags: const ['预测'],
+        predicted: true,
+        fetchedAt: DateTime.now(),
+        revisions: const [],
+      );
   /// 日历上要画的事件：只受游戏/标签/截止开关影响，不过滤时间，
   /// 已过期的也会以低饱和度出现在日历上。
-  List<GameEvent> calendarEvents() => allEvents
+  List<GameEvent> calendarEvents() => [...allEvents, ...predictedEvents()]
       .where((e) => selectedGames.isEmpty || selectedGames.contains(e.gameId))
       .where((e) => selectedTags.isEmpty ||
           selectedTags
@@ -198,7 +292,7 @@ class AppState extends ChangeNotifier {
     return list;
   }
   List<GameEvent> visibleEvents() {
-    final list = allEvents
+    final list = [...allEvents, ...predictedEvents()]
         .where(_passes)
         .where((e) => showDeadlineEvents || !isDeadlineEvent(e))
         .toList();
@@ -393,7 +487,9 @@ class AppState extends ChangeNotifier {
 
   /// 需要提醒的事件：只看已绑定的游戏；一个都没绑就全部提醒
   List<GameEvent> get reminderScope {
+    // 预测事件不排提醒：没确认的东西不该在半夜弹通知
     final events = allEvents
+        .where((e) => !e.predicted)
         .where((e) => showDeadlineEvents || !isDeadlineEvent(e))
         .toList();
     if (bindings.isEmpty) return events;
