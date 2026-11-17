@@ -6,8 +6,10 @@ import 'package:flutter/services.dart' show rootBundle;
 /// 北京时间（UTC+8）。产品 MVP 阶段只支持单时区。
 const beijingOffset = Duration(hours: 8);
 
+/// 解析成“真实时刻”。JSON 里是 `+08:00`，解析出来就是 UTC 瞬时点，
+/// 展示时统一交给 `format.wall()` 换成北京时间墙钟 —— 全链路只有这一种口径，
+/// 不要在别处再加/减 8 小时。
 DateTime? _parse(String? raw) => (raw == null || raw.isEmpty) ? null : DateTime.parse(raw);
-
 Color _hex(String? raw) {
   if (raw == null || raw.length < 7) return const Color(0xFF8A8A8A);
   return Color(0xFF000000 | int.parse(raw.substring(1), radix: 16));
@@ -98,6 +100,7 @@ class GameEvent {
     this.sourceUrl,
     this.version,
     this.tags = const [],
+    this.sourceHash,
   });
 
   final String id;
@@ -118,6 +121,10 @@ class GameEvent {
   final String? version;
   final List<String> tags;
 
+  /// 动态原文指纹。只有它变了才可能是“官方改了公告”；
+  /// 指纹相同而时间不同，一律视作模型抽取抖动，不改事件。
+  final String? sourceHash;
+
   /// 真正该被提醒的时刻：截止类用 end，开始类用 start
   DateTime get due => end ?? start!;
   bool get isDeadline => start == null;
@@ -136,6 +143,7 @@ class GameEvent {
         'fetched_at': fetchedAt?.toIso8601String(),
         'source': {'name': sourceName, 'url': sourceUrl},
         'version': version,
+        'source_hash': sourceHash,
         'tags': tags,
         'revisions': [
           for (final r in revisions)
@@ -157,6 +165,7 @@ class GameEvent {
         sourceName: (j['source'] as Map?)?['name'] as String?,
         sourceUrl: (j['source'] as Map?)?['url'] as String?,
         version: j['version'] as String?,
+        sourceHash: j['source_hash'] as String?,
         tags: ((j['tags'] as List?) ?? const []).cast<String>(),
         revisions: ((j['revisions'] as List?) ?? const [])
             .map((e) => Revision.fromJson(e as Map<String, dynamic>))

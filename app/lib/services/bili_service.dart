@@ -167,6 +167,7 @@ class BiliService {
     required String author,
     required String dynamicId,
     required DateTime fetchedAt,
+    required String sourceHash,
   }) {
     return GameEvent(
       id: 'b$dynamicId',
@@ -182,6 +183,7 @@ class BiliService {
       sourceName: 'B站动态 · $author',
       sourceUrl: 'https://t.bilibili.com/$dynamicId',
       version: n.version,
+      sourceHash: sourceHash,
       tags: n.tags,
       revisions: const [],
     );

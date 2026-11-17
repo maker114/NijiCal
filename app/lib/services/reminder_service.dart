@@ -55,7 +55,10 @@ abstract class ReminderService {
     var count = 0;
 
     for (final event in events) {
-      final offsets = alarms[event.type] ?? const [-1440, -60];
+      final all = alarms[event.type] ?? const [-1440, -60];
+      // 开始类事件只保留最近的一档提醒：一个活动已经被拆成“开始/结束”两条，
+      // 再各排两条就是 4 条噪音，而提醒本该围绕截止点。
+      final offsets = event.isDeadline ? all : [all.last];
       for (final minutes in offsets) {
         final fireAt = event.due.add(Duration(minutes: minutes));
         if (fireAt.isBefore(DateTime.now())) continue;
@@ -110,6 +113,25 @@ abstract class ReminderService {
     );
   }
 
+  /// 立即发一条通知（改期提醒用，不排期）
+  static Future<void> notifyNow({required String title, required String body}) async {
+    await init();
+    await _plugin.show(
+      id: 990002,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channelId,
+          _channelName,
+          channelDescription: _channelDesc,
+          importance: Importance.high,
+          priority: Priority.high,
+          color: Color(0xFF6366F1),
+        ),
+      ),
+    );
+  }
   static String _prefix(GameEvent e) => e.isDeadline ? '【截止】' : '【开始】';
 
   static String _offsetLabel(int minutes) {

@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../model.dart';
-
 /// 大模型配置：baseUrl + key + model，全部存在本机。
 class LlmConfig {
   const LlmConfig({required this.baseUrl, required this.apiKey, required this.model});
@@ -93,7 +91,7 @@ $text
   "game": "异环 | 明日方舟 | 终末地 | 绝区零",
   "version": "x.y" 或 null,
   "type": "${types.join(' | ')}",
-  "title": "不超过 30 字，照抄原文措辞",
+  "title": "不超过 18 字",
   "start": "2026-11-20T18:30:00+08:00" 或 null,
   "end": "同上" 或 null,
   "summary": "不超过 60 字",
@@ -207,7 +205,7 @@ $text
       event: NormalizedEvent(
         gameId: gameId,
         type: type,
-        title: title.length > 40 ? title.substring(0, 40) : title,
+        title: title.length > 18 ? title.substring(0, 18) : title,
         summary: '${json['summary'] ?? ''}'.trim(),
         confidence: confidence,
         tags: tags,
@@ -222,10 +220,9 @@ $text
     if (value == null) return null;
     final raw = '$value'.trim();
     if (raw.isEmpty || raw.toLowerCase() == 'null') return null;
-    final dt = DateTime.tryParse(raw);
-    if (dt == null) return null;
-    // 统一成北京时间墙钟
-    return dt.isUtc ? dt.add(beijingOffset) : dt;
+    // 带 +08:00 的字符串解析出来已经是正确的瞬时点，不要再加 8 小时；
+    // 展示时由 format.wall() 统一换成北京时间。
+    return DateTime.tryParse(raw);
   }
 
   static String? _validVersion(dynamic value) {
