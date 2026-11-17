@@ -178,6 +178,20 @@ class AppState extends ChangeNotifier {
     return list;
   }
 
+  /// 这款游戏的版本号：从大模型抽出来的 version 里取最近一条
+  /// （打包数据里的 version_current 从来没填过，不能拿来展示）
+  String? latestVersionOf(String gameId) {
+    final withVersion = eventsOf(gameId)
+        .where((e) => (e.version ?? '').trim().isNotEmpty)
+        .toList();
+    if (withVersion.isEmpty) return null;
+    withVersion.sort((a, b) {
+      final fa = a.fetchedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final fb = b.fetchedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return fb.compareTo(fa);
+    });
+    return withVersion.first.version;
+  }
   /// 某款游戏、且符合当前「显示截止事件」开关的日程
   List<GameEvent> visibleEventsOf(String gameId) => eventsOf(gameId)
       .where((e) => showDeadlineEvents || !isDeadlineEvent(e))
