@@ -79,9 +79,12 @@ class _BiliLoginPageState extends State<BiliLoginPage> {
 
 /// 从 B 站拉动态 → 过大模型规范化 → 写入本机事件。
 class BiliRefreshDialog extends StatefulWidget {
-  const BiliRefreshDialog({super.key, required this.state});
+  const BiliRefreshDialog({super.key, required this.state, this.onlyGameId});
 
   final AppState state;
+
+  /// 非空时只刷新这一款游戏（添加游戏后立刻拉一次用）
+  final String? onlyGameId;
 
   @override
   State<BiliRefreshDialog> createState() => _BiliRefreshDialogState();
@@ -162,7 +165,16 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       if (mounted) setState(() => account = name);
 
       final games = widget.state.gameMap;
-      final bindings = widget.state.bindings;
+      final all = widget.state.bindings;
+      final bindings = widget.onlyGameId == null
+          ? all
+          : {
+              if (all.containsKey(widget.onlyGameId)) widget.onlyGameId!: all[widget.onlyGameId]!,
+            };
+      if (bindings.isEmpty) {
+        _finish('这个游戏还没有绑定官号 UID');
+        return;
+      }
       final items = <Map<String, dynamic>>[];
       var rawFetched = 0;
       const perAccount = 8;
@@ -280,7 +292,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         _finish('没有解析出事件（$fetched 条动态全部未通过），已保留原有 ${widget.state.liveEvents.length} 条');
         return;
       }
-      final changes = await widget.state.applyLive(events.values.toList());
+      final changes = await widget.state.applyLive(events.values.toList(), onlyGame: widget.onlyGameId);
 
       if (changes.isNotEmpty) {
         // 改期是这套链路最有价值的部分：立刻推一条，别等用户自己发现

@@ -225,7 +225,17 @@ class _ShellBodyState extends State<_ShellBody> {
           if (tab == 1)
             IconButton(
               tooltip: '添加游戏',
-              onPressed: () => showAddGameSheet(context, widget.state),
+              onPressed: () async {
+                final id = await showAddGameSheet(context, widget.state);
+                if (id == null || !context.mounted) return;
+                await showDialog<bool>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => BiliRefreshDialog(state: widget.state, onlyGameId: id),
+                );
+                if (!context.mounted) return;
+                await widget.onReschedule();
+              },
               icon: const Icon(Icons.add),
             ),
           if (tab == 2)
