@@ -8,6 +8,7 @@
 mvp/secrets/bili.json
 
 # 生成物与工作文件
+dist/
 mvp/site/
 mvp/data/candidates.json
 app/flutter_*.log
