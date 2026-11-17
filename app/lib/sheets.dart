@@ -208,16 +208,6 @@ Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent eve
         if ((event.version ?? '').isNotEmpty) _MetaRow(label: '版本', value: event.version!),
         _MetaRow(label: '时间', value: eventRange(event.start, event.end)),
         _MetaRow(label: '剩余', value: countdownOf(event.due).text),
-        _MetaRow(label: '置信度', value: '${event.confidence}%'),
-        _MetaRow(label: '来源', value: event.sourceName ?? '未标注'),
-        if ((event.sourceUrl ?? '').isNotEmpty) ...[
-          const SizedBox(height: 4),
-          SelectableText(
-            event.sourceUrl!,
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary),
-          ),
-        ],
-        _MetaRow(label: '抓取时间', value: event.fetchedAt == null ? '—' : mdhm(event.fetchedAt!)),
         const SizedBox(height: 18),
         if (event.tags.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -256,10 +246,6 @@ Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent eve
             ),
         ],
         const SizedBox(height: 18),
-        Text('提醒规则', style: theme.textTheme.labelLarge),
-        const SizedBox(height: 4),
-        Text(reminderText(state.data!.alarmsFor(event.type)), style: theme.textTheme.bodyMedium),
-        const SizedBox(height: 22),
         Row(
           children: [
             Expanded(
