@@ -93,8 +93,10 @@ class BiliRefreshDialog extends StatefulWidget {
 class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
   late final WebViewController controller;
   String message = '准备中…';
-  int done = 0;
-  int total = 1;
+  int gameDone = 0;
+  int gameTotal = 1;
+  int itemDone = 0;
+  int itemTotal = 0;
   bool finished = false;
   int added = 0;
   final List<String> log = [];
@@ -117,12 +119,13 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
     _run();
   }
 
-  void _progress(String text, int d, int t) {
+  void _progress(String text, {required int game, int item = 0, int itemTotal = 0}) {
     if (!mounted) return;
     setState(() {
       message = text;
-      done = d;
-      total = t < 1 ? 1 : t;
+      gameDone = game;
+      itemDone = item;
+      this.itemTotal = itemTotal;
     });
   }
 
@@ -197,26 +200,38 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         _finish('这个游戏还没有绑定官号 UID');
         return;
       }
-      final items = <Map<String, dynamic>>[];
-      var rawFetched = 0;
-      // 只按账号限流，不再设全局上限：以前 4 个号就能吃满 30 条，
-      // 后加的游戏一条都没机会进入解析。
-      const perAccount = 10;
 
-      var index = 0;
-      for (final entry in bindings.entries) {
-        index++;
+      const perAccount = 10;
+      final entries = bindings.entries.toList();
+      if (mounted) {
+        setState(() {
+          gameTotal = entries.length;
+          gameDone = 0;
+        });
+      }
+
+      for (var index = 0; index < entries.length; index++) {
+        final entry = entries[index];
         final name = games[entry.key]?.name ?? entry.key;
-        _progress('拉取 $name 的动态（$index/${bindings.length}）', index - 1, bindings.length);
+        _progress(
+          '拉取 $name 的动态',
+          game: index,
+          item: 0,
+          itemTotal: 0,
+        );
+
+        var taken = <Map<String, dynamic>>[];
         try {
           final list = await BiliService.fetchSpace(controller, entry.value, pages: 2);
           rawFetched += list.length;
 
-          // 顺手把官号头像存下来，列表和详情用真头像
-          final face = await BiliService.faceOf(controller, entry.value);
-          if (face != null) await AvatarStore.download(entry.key, face);
+          // 头像已缓存就不用再请求一次（少一次接口调用，少一分被限流的概率）
+          if (AvatarStore.pathOf(entry.key) == null) {
+            final face = await BiliService.faceOf(controller, entry.value);
+            if (face != null) await AvatarStore.download(entry.key, face);
+          }
 
-          // 预筛分两级：先收「关键词 + 时间」的，再用「只有时间」的补足名额，
+          // 预筛分两级：先收「关键词 + 时间」的，再用「只有时间」的补足名额；
           // 避免把没有关键词但确实带日期的公告漏掉。
           final strict = <Map<String, dynamic>>[];
           final loose = <Map<String, dynamic>>[];
@@ -229,11 +244,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
               loose.add({...item, '_game': entry.key, '_name': name});
             }
           }
-          final taken = <Map<String, dynamic>>[
-            ...strict,
-            ...loose,
-          ].take(perAccount).toList();
-          items.addAll(taken);
+          taken = <Map<String, dynamic>>[...strict, ...loose].take(perAccount).toList();
           stats[entry.key] = _GameStat(
             raw: list.length,
             strict: strict.length,
@@ -242,89 +253,38 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           );
         } catch (e) {
           final reason = '$e'.split('\n').first;
-          log.add('$name：拉取失败 $reason');
+          stats[entry.key] = _GameStat(raw: 0, strict: 0, loose: 0, taken: 0)..error = reason;
           failures.add('$name｜拉取失败：$reason');
+          debugPrint('[NijiCal] fetch failed game=$name uid=${entry.value} reason=$reason');
+          if (mounted) setState(() => gameDone = index + 1);
+          await Future<void>.delayed(const Duration(milliseconds: 2500));
+          continue;
         }
+
+        fetched += taken.length;
+
+        for (var j = 0; j < taken.length; j++) {
+          final item = taken[j];
+          _progress(
+            '$name 解析（${j + 1}/${taken.length}）',
+            game: index,
+            item: j,
+            itemTotal: taken.length,
+          );
+          await _parseOne(
+            item: item,
+            gameId: entry.key,
+            gameName: name,
+            config: config,
+            now: now,
+            events: events,
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 120));
+        }
+
+        _progress('$name 完成', game: index + 1, item: taken.length, itemTotal: taken.length);
         // 多个号连着打接口容易被风控，账号之间拉开一点
         await Future<void>.delayed(const Duration(milliseconds: 2500));
-      }
-      fetched = items.length;
-      this.rawFetched = rawFetched;
-
-      if (items.isEmpty) {
-        _finish('没有拉到动态');
-        return;
-      }
-
-      for (var i = 0; i < items.length; i++) {
-        final item = items[i];
-        final gameId = item['_game'] as String;
-        final gameName = item['_name'] as String;
-        _progress('大模型解析（${i + 1}/${items.length}）', i, items.length);
-
-        final text = BiliService.dynamicsText(item);
-        if (text.length < 8) {
-          failures.add('$gameName｜正文为空（${BiliService.idOf(item)}）');
-          continue;
-        }
-        final outcome = await LlmNormalizer.normalize(
-          text: text,
-          author: BiliService.authorOf(item),
-          publishedAt: BiliService.publishedAtOf(item),
-          config: config,
-          fallbackGameId: gameId,
-        );
-        if (outcome.event == null) {
-          stats[gameId]?.failed += 1;
-          failures.add('$gameName｜${outcome.error ?? '未知原因'}（${BiliService.idOf(item)}）');
-          continue;
-        }
-        stats[gameId]?.parsed += 1;
-        final normalized = outcome.event!;
-        final event = BiliService.fromNormalized(
-          n: normalized,
-          author: BiliService.authorOf(item),
-          dynamicId: BiliService.idOf(item),
-          fetchedAt: now,
-          sourceHash: contentHash(text),
-        );
-        // 游戏以绑定关系为准（模型判错时仍归到你绑的那个号）
-        GameEvent build({required String id, required String type, DateTime? start, DateTime? end, String? title}) => GameEvent(
-              id: id,
-              gameId: gameId,
-              type: type,
-              title: title ?? event.title,
-              start: start,
-              end: end,
-              status: event.status,
-              confidence: event.confidence,
-              summary: event.summary,
-              fetchedAt: event.fetchedAt,
-              sourceName: event.sourceName,
-              sourceUrl: event.sourceUrl,
-              version: event.version,
-              tags: event.tags,
-              sourceHash: event.sourceHash,
-              revisions: const [],
-            );
-
-        // 有起止区间的“开始类”事件拆成两条：开始一条、结束一条。
-        // 否则类型写着“开始”，圆环和倒计时却落在结束那天，读起来是矛盾的。
-        final isStartType = event.type == '活动开始' || event.type == '卡池开始';
-        if (isStartType && event.start != null && event.end != null) {
-          final closeType = event.type == '活动开始' ? '活动结束' : '卡池结束';
-          // 标题也跟着改，否则会出现「中坚甄选开启」配「卡池结束」的别扭组合
-          String closeTitle(String raw) {
-            if (raw.contains('开启')) return raw.replaceAll('开启', '结束');
-            if (raw.contains('开始')) return raw.replaceAll('开始', '结束');
-            return '$raw（截止）';
-          }
-
-          events['${event.id}-start'] = build(id: '${event.id}-start', type: event.type, start: event.start);
-          events['${event.id}-end'] = build(id: '${event.id}-end', type: closeType, end: event.end, title: closeTitle(event.title));
-        } else {
-          events[event.id] = build(id: event.id, type: event.type, start: event.start, end: event.end);
-        }
       }
 
       added = events.length;
@@ -361,21 +321,100 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
 
       for (final entry in stats.entries) {
         final name = widget.state.gameMap[entry.key]?.name ?? entry.key;
+        if (entry.value.error != null) {
+          log.add('$name：拉取失败 · ${entry.value.error}');
+          continue;
+        }
         final mine = widget.state.liveEvents.where((e) => e.gameId == entry.key).toList();
         final hidden = mine.where(AppState.isDeadlineEvent).length;
         log.add('$name：拉到 ${entry.value.raw} · 送解析 ${entry.value.taken} · '
             '入库 ${mine.length}${hidden > 0 ? '（其中 $hidden 条截止类）' : ''} · '
             '未通过 ${entry.value.failed}');
       }
+      for (final line in failures) {
+        debugPrint('[NijiCal] fail $line');
+      }
 
       final hiddenNote = stored.isNotEmpty && visible == 0
           ? '｜${stored.length} 条全是截止类事件，已被「显示截止事件」开关隐藏'
           : '';
-      _finish('完成：$added 条事件｜${bindings.length} 个账号 · 送解析 $fetched 条（共拉 $rawFetched 条），${failures.length} 条未通过'
+      _finish('完成：$added 条事件｜${entries.length} 个账号 · 送解析 $fetched 条（共拉 $rawFetched 条），${failures.length} 条未通过'
           '${changes.isEmpty ? '' : '｜改期 ${changes.length} 项'}$hiddenNote');
     } catch (e) {
       _finish('失败：${'$e'.split('\n').first}');
     }
+  }
+
+  /// 单条动态 → 事件（原样放进事件表）
+  Future<void> _parseOne({
+    required Map<String, dynamic> item,
+    required String gameId,
+    required String gameName,
+    required LlmConfig config,
+    required DateTime now,
+    required Map<String, GameEvent> events,
+  }) async {
+    final text = BiliService.dynamicsText(item);
+    if (text.length < 8) {
+      failures.add('$gameName｜正文为空（${BiliService.idOf(item)}）');
+      stats[gameId]?.failed += 1;
+      return;
+    }
+    final outcome = await LlmNormalizer.normalize(
+      text: text,
+      author: BiliService.authorOf(item),
+      publishedAt: BiliService.publishedAtOf(item),
+      config: config,
+      fallbackGameId: gameId,
+    );
+      if (outcome.event == null) {
+        stats[gameId]?.failed += 1;
+        failures.add('$gameName｜${outcome.error ?? '未知原因'}（${BiliService.idOf(item)}）');
+        return;
+      }
+      stats[gameId]?.parsed += 1;
+      final normalized = outcome.event!;
+      final event = BiliService.fromNormalized(
+        n: normalized,
+        author: BiliService.authorOf(item),
+        dynamicId: BiliService.idOf(item),
+        fetchedAt: now,
+        sourceHash: contentHash(text),
+      );
+      GameEvent build({required String id, required String type, DateTime? start, DateTime? end, String? title}) => GameEvent(
+            id: id,
+            gameId: gameId,
+            type: type,
+            title: title ?? event.title,
+            start: start,
+            end: end,
+            status: event.status,
+            confidence: event.confidence,
+            summary: event.summary,
+            fetchedAt: event.fetchedAt,
+            sourceName: event.sourceName,
+            sourceUrl: event.sourceUrl,
+            version: event.version,
+            tags: event.tags,
+            sourceHash: event.sourceHash,
+            revisions: const [],
+          );
+
+      // 有起止区间的“开始类”事件拆成两条：开始一条、结束一条。
+      final isStartType = event.type == '活动开始' || event.type == '卡池开始';
+      if (isStartType && event.start != null && event.end != null) {
+        final closeType = event.type == '活动开始' ? '活动结束' : '卡池结束';
+        String closeTitle(String raw) {
+          if (raw.contains('开启')) return raw.replaceAll('开启', '结束');
+          if (raw.contains('开始')) return raw.replaceAll('开始', '结束');
+          return '$raw（截止）';
+        }
+
+        events['${event.id}-start'] = build(id: '${event.id}-start', type: event.type, start: event.start);
+        events['${event.id}-end'] = build(id: '${event.id}-end', type: closeType, end: event.end, title: closeTitle(event.title));
+      } else {
+        events[event.id] = build(id: event.id, type: event.type, start: event.start, end: event.end);
+      }
   }
 
   void _finish(String text) {
@@ -383,7 +422,8 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
     setState(() {
       message = text;
       finished = true;
-      done = total;
+      gameDone = gameTotal;
+      itemDone = itemTotal;
     });
   }
 
@@ -452,11 +492,21 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      LinearProgressIndicator(
-                        value: finished ? 1 : done / (total == 0 ? 1 : total),
-                        minHeight: 6,
-                        borderRadius: BorderRadius.circular(AppShapes.pillRadius),
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      // 上面一条：整轮刷新的进度（几个账号里完成到第几个）
+                      _ProgressBar(
+                        label: '游戏 ${finished ? gameTotal : gameDone}/$gameTotal',
+                        value: finished ? 1 : gameDone / (gameTotal == 0 ? 1 : gameTotal),
+                      ),
+                      const SizedBox(height: 8),
+                      // 下面一条：当前这个账号的动态解析进度
+                      _ProgressBar(
+                        label: itemTotal == 0
+                            ? '本游戏 · 拉取中'
+                            : '本游戏 ${finished ? itemTotal : itemDone}/$itemTotal',
+                        value: itemTotal == 0
+                            ? (finished ? 1 : 0)
+                            : (finished ? 1 : itemDone / itemTotal),
+                        subtle: true,
                       ),
                       const SizedBox(height: 12),
                       Text(message, style: theme.textTheme.bodyMedium),
@@ -548,4 +598,42 @@ class _GameStat {
   int parsed = 0;
   int failed = 0;
   String? error;
+}
+
+/// 一条带标签的细进度条
+class _ProgressBar extends StatelessWidget {
+  const _ProgressBar({required this.label, required this.value, this.subtle = false});
+
+  final String label;
+  final double value;
+  final bool subtle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final v = value.isNaN ? 0.0 : value.clamp(0.0, 1.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: subtle ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppShapes.pillRadius),
+          child: LinearProgressIndicator(
+            value: v,
+            minHeight: subtle ? 4 : 6,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            color: subtle
+                ? theme.colorScheme.primary.withValues(alpha: 0.55)
+                : theme.colorScheme.primary,
+          ),
+        ),
+      ],
+    );
+  }
 }
