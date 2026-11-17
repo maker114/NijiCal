@@ -61,7 +61,6 @@ Future<void> showFilterSheet(BuildContext context, AppState state) {
       listenable: state,
       builder: (context, _) {
         final data = state.data!;
-        final types = data.typeOrder.where((t) => data.events.any((e) => e.type == t)).toList();
         final theme = Theme.of(context);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,22 +88,25 @@ Future<void> showFilterSheet(BuildContext context, AppState state) {
               ],
             ),
             const SizedBox(height: 18),
-            Text('类型', style: theme.textTheme.labelLarge),
+            Text('标签', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 4),
+            Text('和上面的游戏是两个维度，可同时选：维度内多选取其一，维度之间取交集。',
+                style: theme.textTheme.labelSmall),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 ChoicePill(
-                  label: '全部类型',
-                  selected: state.selectedTypes.isEmpty,
-                  onTap: state.clearTypes,
+                  label: '全部标签',
+                  selected: state.selectedTags.isEmpty,
+                  onTap: state.clearTags,
                 ),
-                for (final t in types)
+                for (final tag in kTagGroups.keys)
                   ChoicePill(
-                    label: t,
-                    selected: state.selectedTypes.contains(t),
-                    onTap: () => state.toggleType(t),
+                    label: tag,
+                    selected: state.selectedTags.contains(tag),
+                    onTap: () => state.toggleTag(tag),
                   ),
               ],
             ),

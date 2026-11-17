@@ -129,4 +129,16 @@ void main() {
     expect(find.text('日历'), findsWidgets);
     expect(find.text('今天'), findsWidgets);
   });
-}
+
+  test('同一公告被多条动态解析时会去重', () {
+    final t = DateTime.parse('2026-11-05T00:00:00+08:00');
+    final events = [
+      _ev(id: 'a', title: '全新版本「致电，空想迷数」更新', start: t, hash: 'h1'),
+      _ev(id: 'b', title: '致电，空想迷数版本更新', start: t, hash: 'h1'),
+      _ev(id: 'c', title: '致电空想迷数版本更新', start: t, hash: 'h1'),
+      _ev(id: 'd', title: '霜寒环线特别路线结束', end: t, hash: 'h2'),
+    ];
+    final deduped = dedupeEvents(events);
+    expect(deduped, hasLength(2));
+    expect(deduped.map((e) => e.id), containsAll(<String>['a', 'd']));
+  });}

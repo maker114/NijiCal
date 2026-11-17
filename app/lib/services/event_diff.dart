@@ -132,6 +132,7 @@ String _changedAt(DateTime now) =>
   List<GameEvent> freshEvents,
   DateTime now,
 ) {
+  freshEvents = dedupeEvents(freshEvents);
   final byId = {for (final e in oldEvents) e.id: e};
   final changes = diffEvents(oldEvents, freshEvents);
   final next = <GameEvent>[];
@@ -167,3 +168,26 @@ GameEvent _adoptHash(GameEvent event, String? hash) => GameEvent(
       sourceHash: hash,
       revisions: event.revisions,
     );
+/// 标题核心：去掉标点、引号、空格，以及“全新版本/版本更新/开启/结束”这类套话。
+/// 用来识别“同一条公告被多条动态各解析一遍”的重复。
+String titleCore(String title) {
+  final stripped = title.replaceAll(RegExp(r'[^\u4e00-\u9fa5A-Za-z0-9]'), '');
+  return stripped.replaceAll(
+    RegExp(r'全新版本|版本更新|版本前瞻|特别节目|今日开启|即将开启|正式开启|开启|结束|更新|版本|活动|卡池'),
+    '',
+  );
+}
+
+/// 同一款游戏、同一类型、同一时间点、标题核心相同 → 视作同一条事件
+String _dedupeKey(GameEvent e) =>
+    '${e.gameId}|${e.type}|${_stamp(e.start)}|${_stamp(e.end)}|${titleCore(e.title)}';
+
+/// 去重：保留先出现的那条（刷新结果按时间序，先到的通常更完整）
+List<GameEvent> dedupeEvents(List<GameEvent> events) {
+  final seen = <String>{};
+  final out = <GameEvent>[];
+  for (final event in events) {
+    if (seen.add(_dedupeKey(event))) out.add(event);
+  }
+  return out;
+}
