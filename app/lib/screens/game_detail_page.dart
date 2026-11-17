@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import '../services/avatar_store.dart';
+import '../services/logo_color.dart';
 import '../format.dart';
 import '../model.dart';
 import '../sheets.dart';
@@ -15,6 +19,29 @@ class GameDetailPage extends StatelessWidget {
   final AppState state;
   final Game game;
 
+  /// 用这款游戏的官号头像重新算一次标识色
+  Future<void> _applyLogoAccent(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final path = AvatarStore.pathOf(game.id);
+    if (path == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('还没有这个号的头像，先在订阅页刷新一次')),
+      );
+      return;
+    }
+    try {
+      final bytes = await File(path).readAsBytes();
+      final color = await dominantColorOf(bytes);
+      if (color == null) {
+        messenger.showSnackBar(const SnackBar(content: Text('这张头像提不出颜色，换手动选一个吧')));
+        return;
+      }
+      state.setGameAccent(game.id, color.toARGB32());
+      messenger.showSnackBar(const SnackBar(content: Text('标识色已按头像更新')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('取色失败：${'$e'.split('\n').first}')));
+    }
+  }
   Future<void> _openSettings(BuildContext context) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -63,6 +90,21 @@ class GameDetailPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _applyLogoAccent(context),
+                    icon: const Icon(Icons.palette_outlined, size: 18),
+                    label: const Text('标识色取自官号头像'),
+                    style: OutlinedButton.styleFrom(
+                      shape: AppShapes.pill,
+                      side: BorderSide.none,
+                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
