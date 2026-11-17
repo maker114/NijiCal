@@ -96,6 +96,21 @@ Future<void> showFilterSheet(BuildContext context, AppState state) {
               ],
             ),
             const SizedBox(height: 18),
+            Text('范围', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final r in RangeFilter.values)
+                  ChoicePill(
+                    label: r.label,
+                    selected: state.range == r,
+                    onTap: () => state.setRange(r),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 18),
             Text('标签', style: theme.textTheme.labelLarge),
             const SizedBox(height: 4),
             Text('和上面的游戏是两个维度，可同时选：维度内多选取其一，维度之间取交集。',
