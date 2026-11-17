@@ -1,0 +1,29 @@
+# Changelog
+
+格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号与 `app/pubspec.yaml` 同源。
+分类只用：新增 / 变更 / 修复 / 移除。
+
+## [2.0.0] - 2026-11-17
+
+### 变更
+- **采集来源收敛为 B 站单一来源**。以前是「官网公告（WebView 渲染 + 正则抽时间窗）」与「B 站动态」两条通道并存，
+  两条通道各自维护一套解析规则，官网那套受页面结构变动影响大，且 4 款游戏里有 2 款（终末地、绝区零）抓不到正文时间。
+  现在只保留 B 站：一条动态本身就是「标题 + 正文 + 发布时间」，结构化程度更高，也不再需要按站点写适配。
+- **动态先经大模型规范化再入库**。以前是正则直接抽「活动时间：A ~ B」，只能处理固定句式；
+  现在把动态原文交给模型，要求输出受白名单约束的 JSON（游戏 / 版本 / 类型 / 起止时间 / 摘要 / 置信度 / 标签），
+  校验不过就丢弃，**不再猜时间**。相对时间（“版本更新后”“本周四”）一律置空并压置信度。
+- 事件模型新增 `version` 与 `tags` 两个字段，详情页与导出的 `.ics` 都会带上。
+
+### 新增
+- 大模型配置页（`订阅 → 大模型解析`）：API 地址 / 模型名 / API Key / 连通性测试，配置只写本机。
+- `llm_normalizer.dart`：OpenAI 兼容的 `/chat/completions` 调用 + 结构校验 + 白名单约束。
+- 刷新进度拆成「拉取 i/N」与「解析 i/N」两段，能看出卡在网络还是卡在模型。
+
+### 移除
+- 删除 `app/lib/services/refresh_service.dart`、`app/lib/screens/refresh_dialog.dart`、`app/lib/services/site_parser.dart`。
+- 移除 6 条来源为官网公告的历史事件（渠道与数据一起清掉）。
+- 官网采集脚本归档到 `mvp/tools/archive/collect_official.py`，不再参与构建。
+
+### 修复
+- 登录态误判：WebView 返回的 JSON 可能被 JSON 编码过一次，原先只按原始 JSON 解析，导致已登录被判成未登录。
+- 登录后直接跳 `api.bilibili.com`，cookie 尚未落位；改为先回 `www.bilibili.com` 再检测。
