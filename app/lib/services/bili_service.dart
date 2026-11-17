@@ -143,10 +143,18 @@ class BiliService {
     return author['name'] as String? ?? '官方';
   }
 
+  /// B 站同一个字段有时是 num、有时是字符串，统一用这个取
+  static int? asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value.trim());
+    return null;
+  }
+
   static DateTime publishedAtOf(Map<String, dynamic> item) {
     final modules = (item['modules'] as Map?)?.cast<String, dynamic>() ?? const {};
     final author = (modules['module_author'] as Map?)?.cast<String, dynamic>() ?? const {};
-    final ts = (author['pub_ts'] as num?)?.toInt();
+    final ts = asInt(author['pub_ts']);
     if (ts != null && ts > 0) return DateTime.fromMillisecondsSinceEpoch(ts * 1000);
     return DateTime.now();
   }

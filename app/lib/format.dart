@@ -95,3 +95,11 @@ String weekdayLabelOf(String key) {
   const names = ['一', '二', '三', '四', '五', '六', '日'];
   return '周${names[dt.weekday - 1]}';
 }
+/// 行内用的紧凑写法：`11/5 12:00 → 11/19 03:59`
+String eventRangeShort(DateTime? start, DateTime? end) {
+  String stamp(DateTime d) => '${shortDate(d)} ${hm(d)}';
+  if (start != null && end != null) return '${stamp(start)} → ${stamp(end)}';
+  if (start != null) return '${stamp(start)} 开始';
+  if (end != null) return '截止 ${stamp(end)}';
+  return '—';
+}

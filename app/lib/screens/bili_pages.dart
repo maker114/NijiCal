@@ -95,6 +95,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
   final List<String> failures = [];
   String modelLabel = '';
   int fetched = 0;
+  int rawFetched = 0;
 
   @override
   void initState() {
@@ -115,6 +116,21 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       done = d;
       total = t < 1 ? 1 : t;
     });
+  }
+
+  /// 预筛：正文里既要有事件关键词，也要有可解析的时间线索。
+  /// 不加这层的话，一个账号 24 条动态会全部送进模型，又慢又贵。
+  static bool _looksLikeEvent(String text) {
+    if (text.length < 10) return false;
+    const keywords = [
+      '活动', '维护', '版本', '兑换码', '卡池', '寻访', '祈愿', '跃迁',
+      '补偿', '前瞻', '截止', '结束', '开启', '开放', '预约',
+    ];
+    if (!keywords.any(text.contains)) return false;
+    final timeRe = RegExp(
+      r'\d{1,2}\s*月\s*\d{1,2}\s*日|\d{1,2}\s*[:：]\s*\d{2}|本周|下周|今日|明天|版本更新后|维护后',
+    );
+    return timeRe.hasMatch(text);
   }
 
   Future<void> _run() async {
@@ -142,6 +158,9 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       final games = widget.state.data?.gamesById ?? {};
       final bindings = widget.state.bindings;
       final items = <Map<String, dynamic>>[];
+      var rawFetched = 0;
+      const perAccount = 8;
+      const totalCap = 30;
 
       var index = 0;
       for (final entry in bindings.entries) {
@@ -150,10 +169,18 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         _progress('拉取 $name 的动态（$index/${bindings.length}）', index - 1, bindings.length);
         try {
           final list = await BiliService.fetchSpace(controller, entry.value, pages: 2);
+          rawFetched += list.length;
+
+          // 预筛：同一账号只送“看得出是事件”的前 8 条，98 条全送模型又慢又贵
+          var picked = 0;
           for (final item in list) {
+            if (picked >= perAccount || items.length >= totalCap) break;
+            final text = BiliService.dynamicsText(item);
+            if (!_looksLikeEvent(text)) continue;
             items.add({...item, '_game': entry.key, '_name': name});
+            picked++;
           }
-          log.add('$name：${list.length} 条动态');
+          log.add('$name：${list.length} 条动态，$picked 条进入解析');
         } catch (e) {
           final reason = '$e'.split('\n').first;
           log.add('$name：拉取失败 $reason');
@@ -162,6 +189,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         await Future<void>.delayed(const Duration(milliseconds: 1200));
       }
       fetched = items.length;
+      this.rawFetched = rawFetched;
 
       if (items.isEmpty) {
         _finish('没有拉到动态');
@@ -197,23 +225,41 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           fetchedAt: now,
         );
         // 游戏以绑定关系为准（模型判错时仍归到你绑的那个号）
-        events[event.id] = GameEvent(
-          id: event.id,
-          gameId: gameId,
-          type: event.type,
-          title: event.title,
-          start: event.start,
-          end: event.end,
-          status: event.status,
-          confidence: event.confidence,
-          summary: event.summary,
-          fetchedAt: event.fetchedAt,
-          sourceName: event.sourceName,
-          sourceUrl: event.sourceUrl,
-          version: event.version,
-          tags: event.tags,
-          revisions: const [],
-        );
+        GameEvent build({required String type, DateTime? start, DateTime? end, String? title}) => GameEvent(
+              id: event.id,
+              gameId: gameId,
+              type: type,
+              title: title ?? event.title,
+              start: start,
+              end: end,
+              status: event.status,
+              confidence: event.confidence,
+              summary: event.summary,
+              fetchedAt: event.fetchedAt,
+              sourceName: event.sourceName,
+              sourceUrl: event.sourceUrl,
+              version: event.version,
+              tags: event.tags,
+              revisions: const [],
+            );
+
+        // 有起止区间的“开始类”事件拆成两条：开始一条、结束一条。
+        // 否则类型写着“开始”，圆环和倒计时却落在结束那天，读起来是矛盾的。
+        final isStartType = event.type == '活动开始' || event.type == '卡池开始';
+        if (isStartType && event.start != null && event.end != null) {
+          final closeType = event.type == '活动开始' ? '活动结束' : '卡池结束';
+          // 标题也跟着改，否则会出现「中坚甄选开启」配「卡池结束」的别扭组合
+          String closeTitle(String raw) {
+            if (raw.contains('开启')) return raw.replaceAll('开启', '结束');
+            if (raw.contains('开始')) return raw.replaceAll('开始', '结束');
+            return '$raw（截止）';
+          }
+
+          events['${event.id}-start'] = build(type: event.type, start: event.start);
+          events['${event.id}-end'] = build(type: closeType, end: event.end, title: closeTitle(event.title));
+        } else {
+          events[event.id] = build(type: event.type, start: event.start, end: event.end);
+        }
       }
 
       added = events.length;
@@ -244,7 +290,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       ..writeln('时间：${DateTime.now().toIso8601String()}')
       ..writeln('模型：$modelLabel')
       ..writeln('结果：$message')
-      ..writeln('动态 $fetched 条 / 入库 $added 条 / 未通过 ${failures.length} 条');
+      ..writeln('动态 $rawFetched 条 / 预筛 $fetched 条 / 入库 $added 条 / 未通过 ${failures.length} 条');
     if (log.isNotEmpty) {
       buf.writeln('--- 拉取 ---');
       for (final line in log) {
@@ -267,9 +313,17 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       color: Colors.black.withValues(alpha: 0.35),
       child: Stack(
         children: [
-          Positioned.fill(
+          // B 站这边取的是接口 JSON，不依赖视口尺寸；给 1×1 就够执行 JS，
+          // 也免得把一大段原始 JSON 铺在弹窗背后。
+          Positioned(
+            left: 0,
+            top: 0,
             child: IgnorePointer(
-              child: Opacity(opacity: 0.3, child: WebViewWidget(controller: controller)),
+              child: SizedBox(
+                width: 1,
+                height: 1,
+                child: WebViewWidget(controller: controller),
+              ),
             ),
           ),
           Center(

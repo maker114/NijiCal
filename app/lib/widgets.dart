@@ -197,7 +197,7 @@ class EventRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${event.type} · ${eventRange(event.start, event.end)}',
+                    '${event.type} · ${eventRangeShort(event.start, event.end)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall,
