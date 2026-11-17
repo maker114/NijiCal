@@ -4,8 +4,9 @@
     "sample_notice": "",
     "generated_by": "tools/build.py",
     "timezone": "Asia/Shanghai",
-    "built_at": "2026-11-17T01:17:58+08:00",
-    "event_count": 6,
+    "note": "事件全部来自 B 站动态经大模型规范化；官网采集通道已移除（2026-11-17）。",
+    "built_at": "2026-11-17T12:58:46+08:00",
+    "event_count": 0,
     "game_count": 4
   },
   "type_catalog": [
@@ -110,108 +111,5 @@
       "version_next": null
     }
   ],
-  "events": [
-    {
-      "id": "e027",
-      "title": "「时间啊，向前！」创作征集活动开启",
-      "type": "活动结束",
-      "start": null,
-      "end": "2026-12-01T23:59:00+08:00",
-      "game_id": "arknights",
-      "status": "tentative",
-      "confidence": 73,
-      "summary": "「时间啊，向前！」创作征集活动开启 - 明日方舟 活动 「时间啊，向前！」创作征集活动开启 2026 // 11 / 01 「时间啊，向前！」创作征集进行中 《明日方舟》「时间啊，向前！」创作征集活动现已在多平台进行中。各位博士可在 哔哩哔",
-      "fetched_at": "2026-11-17T00:11:25+08:00",
-      "source": {
-        "name": "官网公告",
-        "url": "https://ak.hypergryph.com/news/7352"
-      },
-      "revisions": []
-    },
-    {
-      "id": "e028",
-      "title": "《冻土与火种》网页活动开启",
-      "type": "活动开始",
-      "start": "2026-10-24T20:00:00+08:00",
-      "end": null,
-      "game_id": "arknights",
-      "status": "confirmed",
-      "confidence": 90,
-      "summary": "《冻土与火种》网页活动开启 - 明日方舟 活动 《冻土与火种》网页活动开启 2026 // 10 / 24 《冻土与火种》网页活动现已开启，参与活动有机会获取精美实物奖励。 活动链接： https://hgto.cc/n/wA198M?so",
-      "fetched_at": "2026-11-17T00:11:25+08:00",
-      "source": {
-        "name": "官网公告",
-        "url": "https://ak.hypergryph.com/news/7353"
-      },
-      "revisions": []
-    },
-    {
-      "id": "e029",
-      "title": "《冻土与火种》网页活动开启",
-      "type": "活动结束",
-      "start": null,
-      "end": "2026-11-24T03:59:00+08:00",
-      "game_id": "arknights",
-      "status": "confirmed",
-      "confidence": 90,
-      "summary": "《冻土与火种》网页活动开启 - 明日方舟 活动 《冻土与火种》网页活动开启 2026 // 10 / 24 《冻土与火种》网页活动现已开启，参与活动有机会获取精美实物奖励。 活动链接： https://hgto.cc/n/wA198M?so",
-      "fetched_at": "2026-11-17T00:11:25+08:00",
-      "source": {
-        "name": "官网公告",
-        "url": "https://ak.hypergryph.com/news/7353"
-      },
-      "revisions": []
-    },
-    {
-      "id": "e030",
-      "title": "[活动预告]2026感谢庆典即将开启",
-      "type": "活动开始",
-      "start": "2026-11-01T12:00:00+08:00",
-      "end": null,
-      "game_id": "arknights",
-      "status": "confirmed",
-      "confidence": 90,
-      "summary": "[活动预告]2026感谢庆典即将开启 - 明日方舟 活动 [活动预告]2026感谢庆典即将开启 2026 // 10 / 24 2026「感谢庆典」限时活动 Part.1 一、2026「感谢庆典」，SideStory「时间啊，向前！」活动限",
-      "fetched_at": "2026-11-17T00:11:25+08:00",
-      "source": {
-        "name": "官网公告",
-        "url": "https://ak.hypergryph.com/news/0787"
-      },
-      "revisions": []
-    },
-    {
-      "id": "e031",
-      "title": "[活动预告]2026感谢庆典即将开启",
-      "type": "活动结束",
-      "start": null,
-      "end": "2026-11-22T03:59:00+08:00",
-      "game_id": "arknights",
-      "status": "confirmed",
-      "confidence": 90,
-      "summary": "[活动预告]2026感谢庆典即将开启 - 明日方舟 活动 [活动预告]2026感谢庆典即将开启 2026 // 10 / 24 2026「感谢庆典」限时活动 Part.1 一、2026「感谢庆典」，SideStory「时间啊，向前！」活动限",
-      "fetched_at": "2026-11-17T00:11:25+08:00",
-      "source": {
-        "name": "官网公告",
-        "url": "https://ak.hypergryph.com/news/0787"
-      },
-      "revisions": []
-    },
-    {
-      "id": "e033",
-      "title": "《绝区零》3.4 版本「长日终尽」前瞻特别节目预告",
-      "type": "前瞻直播",
-      "start": "2026-11-20T18:30:00+08:00",
-      "end": null,
-      "game_id": "zzz",
-      "status": "tentative",
-      "confidence": 78,
-      "summary": "《绝区零》官方网站-《绝区零》3.4 版本「长日终尽」前瞻特别节目预告 首页 角色介绍 影像资料 新闻资讯 设定档案 更多 充值 社区 成长关爱系统 立即下载 关注我们 登录 登出 返回 back 《绝区零》3.4 版本「长日终尽」前瞻特别",
-      "fetched_at": "2026-11-17T00:13:33+08:00",
-      "source": {
-        "name": "官网公告",
-        "url": "https://zzz.mihoyo.com/news/167359"
-      },
-      "revisions": []
-    }
-  ]
+  "events": []
 }
