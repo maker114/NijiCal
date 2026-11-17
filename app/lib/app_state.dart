@@ -110,10 +110,10 @@ class AppState extends ChangeNotifier {
 
     // 游戏已不在库里的事件不再保留（删除游戏后残留的孤儿数据）
     final known = gameMap;
-    liveEvents = [
+    liveEvents = backfillRanges([
       ...merged.events,
       ...kept,
-    ].where((e) => known.containsKey(e.gameId)).toList();
+    ].where((e) => known.containsKey(e.gameId)).toList());
     liveFetchedAt = now;
     await Prefs.saveLiveEvents(liveEvents.map((e) => e.toJson()).toList());
     await Prefs.saveLiveFetchedAt(now);

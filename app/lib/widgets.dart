@@ -180,9 +180,13 @@ class EventRow extends StatelessWidget {
     final accentColor = UrgencyColors.ofContext(context).of(urgency);
     final countdown = countdownOf(event.due);
     final gameColor = accent ?? game?.accent ?? scheme.primary;
-    final timeText = showEnd
-        ? eventRangeShort(event.start, event.end)
-        : (event.start != null ? '开始 ${shortDate(event.start!)} ${hm(event.start!)}' : '截止 ${shortDate(event.due)} ${hm(event.due)}');
+    // 开始类事件带着原区间（displayEnd），直接把「开始 → 结束」显示出来
+    final rangeEnd = event.end ?? event.displayEnd;
+    final timeText = event.start != null && rangeEnd != null
+        ? eventRangeShort(event.start, rangeEnd)
+        : (event.start != null
+            ? '开始 ${shortDate(event.start!)} ${hm(event.start!)}'
+            : '截止 ${shortDate(event.due)} ${hm(event.due)}');
 
     return InkWell(
       onTap: onTap,

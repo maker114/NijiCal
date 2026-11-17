@@ -101,6 +101,7 @@ class GameEvent {
     this.version,
     this.tags = const [],
     this.sourceHash,
+    this.displayEnd,
   });
 
   final String id;
@@ -125,6 +126,10 @@ class GameEvent {
   /// 指纹相同而时间不同，一律视作模型抽取抖动，不改事件。
   final String? sourceHash;
 
+  /// 仅用于展示的结束时间：拆分出来的「开始」事件靠它显示区间，
+  /// 但 due 仍然只看 start，不影响排序与环的位置。
+  final DateTime? displayEnd;
+
   /// 真正该被提醒的时刻：截止类用 end，开始类用 start
   DateTime get due => end ?? start!;
   bool get isDeadline => start == null;
@@ -144,6 +149,7 @@ class GameEvent {
         'source': {'name': sourceName, 'url': sourceUrl},
         'version': version,
         'source_hash': sourceHash,
+        'display_end': displayEnd?.toIso8601String(),
         'tags': tags,
         'revisions': [
           for (final r in revisions)
@@ -166,6 +172,7 @@ class GameEvent {
         sourceUrl: (j['source'] as Map?)?['url'] as String?,
         version: j['version'] as String?,
         sourceHash: j['source_hash'] as String?,
+        displayEnd: _parse(j['display_end'] as String?),
         tags: ((j['tags'] as List?) ?? const []).cast<String>(),
         revisions: ((j['revisions'] as List?) ?? const [])
             .map((e) => Revision.fromJson(e as Map<String, dynamic>))

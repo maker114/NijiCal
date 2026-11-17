@@ -381,7 +381,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         fetchedAt: now,
         sourceHash: contentHash(text),
       );
-      GameEvent build({required String id, required String type, DateTime? start, DateTime? end, String? title}) => GameEvent(
+      GameEvent build({required String id, required String type, DateTime? start, DateTime? end, String? title, DateTime? displayEnd}) => GameEvent(
             id: id,
             gameId: gameId,
             type: type,
@@ -397,6 +397,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
             version: event.version,
             tags: event.tags,
             sourceHash: event.sourceHash,
+            displayEnd: displayEnd,
             revisions: const [],
           );
 
@@ -410,7 +411,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           return '$raw（截止）';
         }
 
-        events['${event.id}-start'] = build(id: '${event.id}-start', type: event.type, start: event.start);
+        events['${event.id}-start'] = build(id: '${event.id}-start', type: event.type, start: event.start, displayEnd: event.end);
         events['${event.id}-end'] = build(id: '${event.id}-end', type: closeType, end: event.end, title: closeTitle(event.title));
       } else {
         events[event.id] = build(id: event.id, type: event.type, start: event.start, end: event.end);

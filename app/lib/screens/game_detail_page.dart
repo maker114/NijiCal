@@ -43,6 +43,7 @@ class GameDetailPage extends StatelessWidget {
     }
   }
   Future<void> _openSettings(BuildContext context) async {
+    final pageContext = context;
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -141,12 +142,12 @@ class GameDetailPage extends StatelessWidget {
                         ),
                       );
                       if (ok != true) return;
-                      if (!context.mounted) return;
-                      Navigator.of(context).pop();
-                      await Future<void>.delayed(const Duration(milliseconds: 220));
-                      if (!context.mounted) return;
-                      Navigator.of(context).pop();
+                      // 先改状态再关界面：关掉 sheet 后 context 就 unmounted 了，
+                      // 之前在后面调用 removeGame，永远走不到。
+                      final sheetContext = context;
                       state.removeGame(game.id);
+                      if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                      if (pageContext.mounted) Navigator.of(pageContext).pop();
                     },
                     style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
                     child: const Text('从游戏库移除'),

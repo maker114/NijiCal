@@ -106,6 +106,7 @@ GameEvent withChanges(GameEvent event, List<EventChange> changes, DateTime now) 
     version: event.version,
     tags: event.tags,
     sourceHash: event.sourceHash,
+    displayEnd: event.displayEnd,
     revisions: [
       ...event.revisions,
       for (final c in mine)
@@ -166,6 +167,7 @@ GameEvent _adoptHash(GameEvent event, String? hash) => GameEvent(
       version: event.version,
       tags: event.tags,
       sourceHash: hash,
+      displayEnd: event.displayEnd,
       revisions: event.revisions,
     );
 /// 标题核心：去掉标点、引号、空格，以及“全新版本/版本更新/开启/结束”这类套话。
@@ -191,3 +193,35 @@ List<GameEvent> dedupeEvents(List<GameEvent> events) {
   }
   return out;
 }
+
+/// 给拆分出来的「开始」事件补上区间：从同一条动态的 `-end` 兄弟事件里取结束时间。
+/// 老数据里没有 displayEnd，靠这一步回填，否则行内只显示「开始 xx」。
+List<GameEvent> backfillRanges(List<GameEvent> events) {
+  final byId = {for (final e in events) e.id: e};
+  return events.map((e) {
+    if (!e.id.endsWith('-start') || e.displayEnd != null) return e;
+    final sibling = byId[e.id.replaceFirst('-start', '-end')];
+    if (sibling?.end == null) return e;
+    return _withDisplayEnd(e, sibling!.end);
+  }).toList();
+}
+
+GameEvent _withDisplayEnd(GameEvent event, DateTime? end) => GameEvent(
+      id: event.id,
+      gameId: event.gameId,
+      type: event.type,
+      title: event.title,
+      start: event.start,
+      end: event.end,
+      status: event.status,
+      confidence: event.confidence,
+      summary: event.summary,
+      fetchedAt: event.fetchedAt,
+      sourceName: event.sourceName,
+      sourceUrl: event.sourceUrl,
+      version: event.version,
+      tags: event.tags,
+      sourceHash: event.sourceHash,
+      displayEnd: end,
+      revisions: event.revisions,
+    );
