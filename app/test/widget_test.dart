@@ -16,10 +16,11 @@ GameEvent _ev({
   List<Revision> revisions = const [],
   EventStatus status = EventStatus.confirmed,
   String? hash,
+  String gameId = 'arknights',
 }) =>
     GameEvent(
       id: id,
-      gameId: 'arknights',
+      gameId: gameId,
       type: end == null ? '活动开始' : '活动结束',
       title: title,
       start: start,
@@ -238,4 +239,84 @@ void main() {
     expect(filled.first.displayEnd, t2);
     expect(filled.first.start, t1);
   });
-}
+
+  group('版本/前瞻预测', () {
+    AppState stateWith(List<GameEvent> events, {PredictionSetting? setting}) {
+      final state = AppState();
+      state.loading = false;
+      state.data = NijiData(
+        dataMode: 'live',
+        sampleNotice: '',
+        builtAt: '2026-11-17T00:00:00',
+        typeOrder: const ['版本更新'],
+        alarms: const {},
+        games: const [
+          Game(id: 'zzz', name: '绝区零', short: '绝区零', accent: Color(0xFFB58F6E)),
+        ],
+        events: events,
+      );
+      state.setPrediction('zzz', setting ?? const PredictionSetting(version: true, preview: true));
+      return state;
+    }
+
+    test('按上次版本更新 + 周期推算下一次版本与其前瞻', () {
+      final last = DateTime.now().subtract(const Duration(days: 10));
+      final state = stateWith([
+        _ev(id: 'v1', title: '3.3 版本更新', start: last, status: EventStatus.confirmed, gameId: 'zzz'),
+      ]);
+
+      final predicted = state.predictedEvents();
+      expect(predicted, hasLength(2));
+
+      final update = predicted.firstWhere((e) => e.type == '版本更新');
+      expect(update.predicted, isTrue);
+      expect(
+        update.due.difference(last).inDays,
+        42,
+        reason: '默认版本周期 42 天',
+      );
+
+      final preview = predicted.firstWhere((e) => e.type == '前瞻直播');
+      expect(update.due.difference(preview.due).inDays, 7, reason: '默认提前 7 天');
+      expect(preview.tags, contains('预测'));
+    });
+
+    test('预测不会和已有真实版本更新撞在同一天', () {
+      final last = DateTime.now().subtract(const Duration(days: 12));
+      final next = last.add(const Duration(days: 42));
+      final state = stateWith([
+        _ev(id: 'v1', title: '3.3 版本更新', start: last, status: EventStatus.confirmed, gameId: 'zzz'),
+        _ev(id: 'v2', title: '3.4 版本更新', start: next, status: EventStatus.confirmed, gameId: 'zzz'),
+      ]);
+
+      // 基准已经落到真实的 3.4 上，预测指向再下一个版本；不得与任何真实日期重合
+      final predicted = state.predictedEvents();
+      for (final p in predicted) {
+        expect(p.due.difference(last).inDays.abs() <= 2, isFalse);
+        expect(p.due.difference(next).inDays.abs() <= 2, isFalse);
+      }
+    });
+
+    test('没有版本记录时不算出预测，并给出空基准', () {
+      final state = stateWith(const []);
+      expect(state.predictionBaseOf('zzz'), isNull);
+      expect(state.predictedEvents(), isEmpty);
+    });
+
+    test('基准可以回退到标题含「版本」的更新事件', () {
+      final last = DateTime.now().subtract(const Duration(days: 5));
+      final state = stateWith([
+        _ev(id: 'x', title: '全新版本「致电」更新', start: last, status: EventStatus.confirmed, gameId: 'zzz'),
+      ]);
+      expect(state.predictionBaseOf('zzz'), isNotNull);
+      expect(state.predictedEvents(), isNotEmpty);
+    });
+
+    test('预测事件不进入提醒范围', () {
+      final last = DateTime.now().subtract(const Duration(days: 10));
+      final state = stateWith([
+        _ev(id: 'v1', title: '3.3 版本更新', start: last, status: EventStatus.confirmed, gameId: 'zzz'),
+      ]);
+      expect(state.reminderScope.where((e) => e.predicted), isEmpty);
+    });
+  });}

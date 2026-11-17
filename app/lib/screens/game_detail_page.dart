@@ -58,6 +58,8 @@ class GameDetailPage extends StatelessWidget {
           final accent = state.gameAccentOf(game);
           final uid = state.bindings[game.id];
           final setting = state.predictionOf(game.id);
+          final base = state.predictionBaseOf(game.id);
+          final nextUpdate = base?.add(Duration(days: setting.cycleDays));
           return Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
             child: Column(
@@ -95,8 +97,13 @@ class GameDetailPage extends StatelessWidget {
                 Text('预测', style: theme.textTheme.labelLarge),
                 const SizedBox(height: 4),
                 Text(
-                  '按上个版本更新的日期往后推。官方消息一到，预测会被真实事件替换。',
-                  style: theme.textTheme.labelSmall,
+                  base == null
+                      ? '还没有这个号的版本记录，先去订阅页刷新一次，才有日期可以推算。'
+                      : '以 ${base.month} 月 ${base.day} 日的版本为基准；'
+                          '预计下个版本 ${nextUpdate == null ? '—' : '${nextUpdate.month} 月 ${nextUpdate.day} 日'}。',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: base == null ? theme.colorScheme.error : null,
+                  ),
                 ),
                 SwitchListTile.adaptive(
                   contentPadding: EdgeInsets.zero,

@@ -99,6 +99,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final calendarList = widget.state.calendarEvents();
     final marks = marksByDate(calendarList, games, widget.state);
     final dayEvents = eventsOn(_selected, calendarList);
+    final predictions = calendarList.where((e) => e.predicted).toList()
+      ..sort((a, b) => a.due.compareTo(b.due));
+    final upcomingPrediction = predictions.isEmpty ? null : predictions.first;
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
@@ -113,6 +116,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _picked = todayKey();
           }),
         ),
+        if (upcomingPrediction != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+            child: Text(
+              '预测：${upcomingPrediction.start!.month} 月 '
+              '${upcomingPrediction.start!.day} 日 ${upcomingPrediction.title}',
+              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary),
+            ),
+          ),
         const _WeekdayHeader(),
         _MonthGrid(
           month: _month,

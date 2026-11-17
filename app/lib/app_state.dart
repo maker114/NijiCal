@@ -154,6 +154,10 @@ class AppState extends ChangeNotifier {
       final allowed = selectedTags.expand((t) => kTagGroups[t] ?? const <String>[]).toSet();
       if (!allowed.contains(e.type)) return false;
     }
+    // 预测事件不受「范围」限制：它们在 6 周之后，正好会被 30 天窗口挡掉，
+    // 那样用户设了开关也看不到任何东西。
+    if (e.predicted) return true;
+
     final due = e.due;
     final h = hoursUntil(due);
     return switch (range) {
@@ -190,6 +194,34 @@ class AppState extends ChangeNotifier {
 
   /// 按「上个版本更新 + 版本周期」推算出的前瞻与版本更新。
   /// 一旦出现同类型的真实事件（±2 天内），就不再输出预测。
+  /// 找这款游戏「上一次版本更新」的日期。
+  ///
+  /// 只认 type == 版本更新 太严：多数游戏抓到的是卡池/活动/维护公告，
+  /// 于是预测永远不生成。按三级回退：
+  ///   1. 类型就是「版本更新」
+  ///   2. 标题里带「版本」且是更新/上线/开启
+  ///   3. 带 version 字段的事件（说明那个版本已经开始）
+  DateTime? predictionBaseOf(String gameId) {
+    final events = allEvents.where((e) => e.gameId == gameId && !e.predicted).toList()
+      ..sort((a, b) => b.due.compareTo(a.due));
+    if (events.isEmpty) return null;
+
+    final typed = events.where((e) => e.type == '版本更新').toList();
+    if (typed.isNotEmpty) return typed.first.due;
+
+    final titled = events
+        .where((e) =>
+            e.title.contains('版本') &&
+            (e.title.contains('更新') || e.title.contains('上线') || e.title.contains('开启')))
+        .toList();
+    if (titled.isNotEmpty) return titled.first.due;
+
+    final versioned = events.where((e) => (e.version ?? '').isNotEmpty).toList();
+    if (versioned.isNotEmpty) return versioned.first.due;
+
+    return null;
+  }
+
   List<GameEvent> predictedEvents() {
     final now = DateTime.now();
     final out = <GameEvent>[];
@@ -200,13 +232,8 @@ class AppState extends ChangeNotifier {
       final game = gameMap[entry.key];
       if (game == null) continue;
 
-      final updates = allEvents
-          .where((e) => e.gameId == entry.key && e.type == '版本更新' && !e.predicted)
-          .toList()
-        ..sort((a, b) => b.due.compareTo(a.due));
-      if (updates.isEmpty) continue;
-
-      final last = updates.first.due;
+      final last = predictionBaseOf(entry.key);
+      if (last == null) continue;
       final nextUpdate = last.add(Duration(days: setting.cycleDays));
 
       bool confirmed(String type, DateTime day) => allEvents.any((e) =>
