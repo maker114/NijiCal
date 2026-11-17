@@ -166,4 +166,14 @@ abstract class Prefs {
     final sp = await SharedPreferences.getInstance();
     await sp.setStringList(_hiddenGamesKey, ids.toList());
   }
+  // 前瞻总结视频的缓存（按事件 id）
+  static Future<String?> loadPreviewSummary(String eventId) async {
+    final sp = await SharedPreferences.getInstance();
+    return sp.getString('nijical.preview.$eventId');
+  }
+
+  static Future<void> savePreviewSummary(String eventId, String json) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString('nijical.preview.$eventId', json);
+  }
 }

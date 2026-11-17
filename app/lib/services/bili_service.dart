@@ -103,6 +103,25 @@ class BiliService {
     return out;
   }
 
+  /// 给其它服务复用的 JSON 抓取（同样的 WebView + cookie 策略）
+  static Future<Map<String, dynamic>?> fetchJson(WebViewController controller, String url) =>
+      _getJson(controller, url);
+
+  /// 在页面里执行 JS 并拿到字符串结果。
+  /// 安卓端返回值常被 JSON 编码过一次（`"{\"a\":1}"`），这里统一还原成原始字符串。
+  static Future<String> runJs(WebViewController controller, String script) async {
+    final raw = await controller.runJavaScriptReturningResult(script);
+    final text = raw is String ? raw : '$raw';
+    if (text.length >= 2 && text.startsWith('"') && text.endsWith('"')) {
+      try {
+        final decoded = jsonDecode(text);
+        if (decoded is String) return decoded;
+      } catch (_) {
+        // 还原失败就用原样
+      }
+    }
+    return text;
+  }
   static Future<Map<String, dynamic>?> _getJson(WebViewController controller, String url) async {
     final done = Completer<void>();
     controller.setNavigationDelegate(NavigationDelegate(
