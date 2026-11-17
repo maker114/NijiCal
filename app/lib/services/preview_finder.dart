@@ -279,8 +279,8 @@ class PreviewFinder {
       ..writeln('UP 主：$owner')
       ..writeln('视频简介：$desc');
     if (subtitleText.isNotEmpty) {
-      material.writeln('字幕（截取前 4000 字）：');
-      material.writeln(subtitleText.length > 4000 ? subtitleText.substring(0, 4000) : subtitleText);
+      material.writeln('字幕（截取前 16000 字）：');
+      material.writeln(subtitleText.length > 16000 ? subtitleText.substring(0, 16000) : subtitleText);
     }
 
     final outcome = await LlmNormalizer.summarizeVideo(

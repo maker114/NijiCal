@@ -96,8 +96,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildCalendar(BuildContext context, List<GameEvent> events, Map<String, Game> games) {
     final theme = Theme.of(context);
-    final marks = marksByDate(events, games, widget.state);
-    final dayEvents = eventsOn(_selected, events);
+    final calendarList = widget.state.calendarEvents();
+    final marks = marksByDate(calendarList, games, widget.state);
+    final dayEvents = eventsOn(_selected, calendarList);
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
@@ -257,7 +258,9 @@ Map<String, List<Color>> marksByDate(
   for (final event in events) {
     final day = dayPartOf(event.due);
     final game = games[event.gameId];
-    final color = game == null ? const Color(0xFF8A8A8A) : state.gameAccentOf(game);
+    final base = game == null ? const Color(0xFF8A8A8A) : state.gameAccentOf(game);
+    // 已过期的事件用低饱和度的同一支色，日历上仍能看出「那天有过什么」
+    final color = event.due.isBefore(DateTime.now()) ? _faded(base) : base;
     marks.putIfAbsent(day, () => <Color>[]).add(color);
     if (marks[day]!.length > 3) {
       marks[day] = marks[day]!.take(3).toList();
@@ -419,4 +422,13 @@ class _DayCell extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 过期事件在日历上的颜色：压低饱和度、抬一点亮度
+Color _faded(Color color) {
+  final hsl = HSLColor.fromColor(color);
+  return hsl
+      .withSaturation(hsl.saturation * 0.28)
+      .withLightness((hsl.lightness + 0.28).clamp(0.0, 1.0))
+      .toColor();
 }

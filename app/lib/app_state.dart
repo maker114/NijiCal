@@ -169,6 +169,17 @@ class AppState extends ChangeNotifier {
       e.title.endsWith('（截止）') ||
       const {'活动结束', '卡池结束', '兑换码截止', '补偿领取截止'}.contains(e.type);
 
+  /// 日历上要画的事件：只受游戏/标签/截止开关影响，不过滤时间，
+  /// 已过期的也会以低饱和度出现在日历上。
+  List<GameEvent> calendarEvents() => allEvents
+      .where((e) => selectedGames.isEmpty || selectedGames.contains(e.gameId))
+      .where((e) => selectedTags.isEmpty ||
+          selectedTags
+              .expand((t) => kTagGroups[t] ?? const <String>[])
+              .toSet()
+              .contains(e.type))
+      .where((e) => showDeadlineEvents || !isDeadlineEvent(e))
+      .toList();
   /// 已过期的事件：只受游戏/标签与截止开关影响，不受「范围」限制，
   /// 否则默认 30 天范围会把它们全过滤掉，列表里的「已过期」永远为空。
   List<GameEvent> expiredEvents() {

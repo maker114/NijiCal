@@ -159,10 +159,12 @@ class _MissedPreviewCardState extends State<MissedPreviewCard> {
             for (final line in summary!.summary.split('\n'))
               if (line.trim().isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
+                  padding: EdgeInsets.only(top: line.trim().startsWith('【') ? 8 : 0, bottom: 4),
                   child: Text(
                     line.trim(),
-                    style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
+                    style: line.trim().startsWith('【')
+                        ? theme.textTheme.labelLarge
+                        : theme.textTheme.bodySmall?.copyWith(height: 1.5),
                   ),
                 ),
             const SizedBox(height: 8),
