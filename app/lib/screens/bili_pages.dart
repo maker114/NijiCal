@@ -245,7 +245,8 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           log.add('$name：拉取失败 $reason');
           failures.add('$name｜拉取失败：$reason');
         }
-        await Future<void>.delayed(const Duration(milliseconds: 1200));
+        // 多个号连着打接口容易被风控，账号之间拉开一点
+        await Future<void>.delayed(const Duration(milliseconds: 2500));
       }
       fetched = items.length;
       this.rawFetched = rawFetched;
@@ -370,7 +371,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       final hiddenNote = stored.isNotEmpty && visible == 0
           ? '｜${stored.length} 条全是截止类事件，已被「显示截止事件」开关隐藏'
           : '';
-      _finish('完成：$added 条事件｜送解析 $fetched 条（共拉 $rawFetched 条），${failures.length} 条未通过'
+      _finish('完成：$added 条事件｜${bindings.length} 个账号 · 送解析 $fetched 条（共拉 $rawFetched 条），${failures.length} 条未通过'
           '${changes.isEmpty ? '' : '｜改期 ${changes.length} 项'}$hiddenNote');
     } catch (e) {
       _finish('失败：${'$e'.split('\n').first}');
@@ -546,4 +547,5 @@ class _GameStat {
   final int taken;
   int parsed = 0;
   int failed = 0;
+  String? error;
 }
