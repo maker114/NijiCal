@@ -79,11 +79,13 @@ class SubscribeScreen extends StatelessWidget {
                       ' · ${data.events.length} 条事件',
                       style: theme.textTheme.bodySmall,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '来源：${data.events.map((e) => e.sourceName ?? '未标注').toSet().join('、')}',
-                      style: theme.textTheme.labelSmall,
-                    ),
+                    if (data.events.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '来源：${data.events.map((e) => e.sourceName ?? '未标注').toSet().join('、')}',
+                        style: theme.textTheme.labelSmall,
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     Text(
                       '事件全部来自 B 站动态，经大模型解析后入日历（日历右上角 ↻ 触发刷新）。',

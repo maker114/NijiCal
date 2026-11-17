@@ -41,7 +41,13 @@ class AppState extends ChangeNotifier {
       ..addAll(await Prefs.loadBindings());
     remindersOn = await Prefs.loadRemindersEnabled();
     try {
-      liveEvents = (await Prefs.loadLiveEvents()).map(GameEvent.fromJson).toList();
+      final loaded = (await Prefs.loadLiveEvents()).map(GameEvent.fromJson).toList();
+      // 2.0.0 移除了官网采集通道，旧版本本机缓存的官网事件要清掉，否则会继续显示
+      final cleaned = loaded.where((e) => !(e.sourceName ?? '').contains('官网公告')).toList();
+      if (cleaned.length != loaded.length) {
+        await Prefs.saveLiveEvents(cleaned.map((e) => e.toJson()).toList());
+      }
+      liveEvents = cleaned;
       liveFetchedAt = await Prefs.loadLiveFetchedAt();
     } catch (_) {
       liveEvents = [];
