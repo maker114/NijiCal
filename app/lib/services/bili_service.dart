@@ -31,6 +31,13 @@ class BiliService {
     return 'not-login';
   }
 
+  /// 当前登录的账号名（用来在刷新界面上显示“用的是谁的号”）
+  static Future<String?> accountName(WebViewController controller) async {
+    final json = await _getJson(controller, '$_api/x/web-interface/nav');
+    final data = json?['data'];
+    if (data is Map && data['isLogin'] == true) return data['uname'] as String?;
+    return null;
+  }
   /// 拉一个 UP 的最近动态
   static Future<List<Map<String, dynamic>>> fetchSpace(
     WebViewController controller,

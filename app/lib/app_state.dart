@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import 'format.dart';
 import 'model.dart';
@@ -15,6 +15,16 @@ enum RangeFilter {
   final String label;
 }
 
+/// 日历上的「标签」：把 9 个事件类型归成玩家看得懂的几类。
+/// 与游戏筛选是两个并行维度，维度内多选为“或”，维度之间为“与”。
+const Map<String, List<String>> kTagGroups = {
+  '前瞻': ['前瞻直播'],
+  '卡池': ['卡池开始', '卡池结束'],
+  '活动': ['活动开始', '活动结束'],
+  '更新': ['版本更新', '停服维护'],
+  '兑换码': ['兑换码截止'],
+  '补偿': ['补偿领取截止'],
+};
 /// 全局状态：数据 + 筛选 + 官号绑定。MVP 阶段全部在内存里，不落盘。
 class AppState extends ChangeNotifier {
   AppState();
@@ -24,7 +34,7 @@ class AppState extends ChangeNotifier {
   String? error;
 
   final Set<String> selectedGames = {};
-  final Set<String> selectedTypes = {};
+  final Set<String> selectedTags = {};
   final Map<String, String> bindings = {};
   RangeFilter range = RangeFilter.month;
   String search = '';
@@ -41,6 +51,9 @@ class AppState extends ChangeNotifier {
       ..clear()
       ..addAll(await Prefs.loadBindings());
     remindersOn = await Prefs.loadRemindersEnabled();
+    gameAccents
+      ..clear()
+      ..addAll(await Prefs.loadGameAccents());
     try {
       final loaded = (await Prefs.loadLiveEvents()).map(GameEvent.fromJson).toList();
       // 2.0.0 移除了官网采集通道，旧版本本机缓存的官网事件要清掉，否则会继续显示
@@ -108,7 +121,11 @@ class AppState extends ChangeNotifier {
 
   bool _passes(GameEvent e) {
     if (selectedGames.isNotEmpty && !selectedGames.contains(e.gameId)) return false;
-    if (selectedTypes.isNotEmpty && !selectedTypes.contains(e.type)) return false;
+    if (selectedTags.isNotEmpty) {
+      // 标签与游戏是两个维度，彼此并行：维度内多选是“或”，维度之间是“与”
+      final allowed = selectedTags.expand((t) => kTagGroups[t] ?? const <String>[]).toSet();
+      if (!allowed.contains(e.type)) return false;
+    }
     final due = e.due;
     final h = hoursUntil(due);
     return switch (range) {
@@ -161,14 +178,14 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleType(String t) {
-    selectedTypes.contains(t) ? selectedTypes.remove(t) : selectedTypes.add(t);
+  void toggleTag(String tag) {
+    selectedTags.contains(tag) ? selectedTags.remove(tag) : selectedTags.add(tag);
     notifyListeners();
   }
 
   void clearFilters() {
     selectedGames.clear();
-    selectedTypes.clear();
+    selectedTags.clear();
     notifyListeners();
   }
 
@@ -177,8 +194,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void clearTypes() {
-    selectedTypes.clear();
+  void clearTags() {
+    selectedTags.clear();
     notifyListeners();
   }
 
@@ -187,6 +204,26 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 每款游戏的标识色可以被用户改，存在本机
+  final Map<String, int> gameAccents = {};
+
+  Future<void> loadGameAccents() async {
+    gameAccents
+      ..clear()
+      ..addAll(await Prefs.loadGameAccents());
+    notifyListeners();
+  }
+
+  Color gameAccentOf(Game game) {
+    final override = gameAccents[game.id];
+    return override == null ? game.accent : Color(override);
+  }
+
+  void setGameAccent(String gameId, int color) {
+    gameAccents[gameId] = color;
+    Prefs.saveGameAccents(gameAccents);
+    notifyListeners();
+  }
   void bind(String gameId, String uid) {
     bindings[gameId] = uid;
     Prefs.saveBindings(bindings);

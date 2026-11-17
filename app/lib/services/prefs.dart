@@ -85,4 +85,22 @@ abstract class Prefs {
     final sp = await SharedPreferences.getInstance();
     await sp.setBool(_remindersKey, value);
   }
-}
+  // 每款游戏的标识色覆盖
+  static const _accentsKey = 'nijical.gameAccents';
+
+  static Future<Map<String, int>> loadGameAccents() async {
+    final sp = await SharedPreferences.getInstance();
+    final raw = sp.getString(_accentsKey);
+    if (raw == null || raw.isEmpty) return {};
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) return {};
+    return {
+      for (final e in decoded.entries)
+        if (e.value is num) '${e.key}': (e.value as num).toInt(),
+    };
+  }
+
+  static Future<void> saveGameAccents(Map<String, int> value) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_accentsKey, jsonEncode(value));
+  }}

@@ -65,6 +65,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               onSelect: (date) => setState(() => _picked = date),
             ),
             const SizedBox(height: 8),
+            _TagBar(state: widget.state),
             const Divider(height: 1),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -272,6 +273,70 @@ class _DayCell extends StatelessWidget {
                 color: isToday ? theme.colorScheme.primary : null,
                 fontWeight: isToday ? FontWeight.w600 : null,
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 日历里的标签筛选条：与游戏筛选并行，可多选
+class _TagBar extends StatelessWidget {
+  const _TagBar({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          _chip(context, label: '全部', selected: state.selectedTags.isEmpty, onTap: state.clearTags),
+          for (final tag in kTagGroups.keys)
+            _chip(
+              context,
+              label: tag,
+              selected: state.selectedTags.contains(tag),
+              onTap: () => state.toggleTag(tag),
+            ),
+          if (state.selectedGames.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 4, top: 12, bottom: 12),
+              child: Text('· 已按游戏过滤', style: theme.textTheme.labelSmall),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(
+    BuildContext context, {
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(right: 8, top: 6, bottom: 6),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: selected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ),

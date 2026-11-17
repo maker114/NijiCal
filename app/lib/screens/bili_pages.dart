@@ -96,6 +96,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
   final List<String> log = [];
   final List<String> failures = [];
   String modelLabel = '';
+  String? account;
   int fetched = 0;
   int rawFetched = 0;
 
@@ -152,10 +153,12 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
     }
 
     try {
-      if (!await BiliService.isLoggedIn(controller)) {
+      final name = await BiliService.accountName(controller);
+      if (name == null) {
         _finish('登录已失效，请重新登录 B 站');
         return;
       }
+      if (mounted) setState(() => account = name);
 
       final games = widget.state.data?.gamesById ?? {};
       final bindings = widget.state.bindings;
@@ -228,8 +231,8 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           sourceHash: contentHash(text),
         );
         // 游戏以绑定关系为准（模型判错时仍归到你绑的那个号）
-        GameEvent build({required String type, DateTime? start, DateTime? end, String? title}) => GameEvent(
-              id: event.id,
+        GameEvent build({required String id, required String type, DateTime? start, DateTime? end, String? title}) => GameEvent(
+              id: id,
               gameId: gameId,
               type: type,
               title: title ?? event.title,
@@ -259,10 +262,10 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
             return '$raw（截止）';
           }
 
-          events['${event.id}-start'] = build(type: event.type, start: event.start);
-          events['${event.id}-end'] = build(type: closeType, end: event.end, title: closeTitle(event.title));
+          events['${event.id}-start'] = build(id: '${event.id}-start', type: event.type, start: event.start);
+          events['${event.id}-end'] = build(id: '${event.id}-end', type: closeType, end: event.end, title: closeTitle(event.title));
         } else {
-          events[event.id] = build(type: event.type, start: event.start, end: event.end);
+          events[event.id] = build(id: event.id, type: event.type, start: event.start, end: event.end);
         }
       }
 
@@ -273,6 +276,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         return;
       }
       final changes = await widget.state.applyLive(events.values.toList());
+
       if (changes.isNotEmpty) {
         // 改期是这套链路最有价值的部分：立刻推一条，别等用户自己发现
         await ReminderService.notifyNow(
@@ -354,7 +358,18 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('从 B 站刷新', style: theme.textTheme.titleLarge),
+                      Row(
+                        children: [
+                          Text('从 B 站刷新', style: theme.textTheme.titleLarge),
+                          const Spacer(),
+                          if (account != null)
+                            Text(
+                              '@$account',
+                              style: theme.textTheme.labelSmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
                       const SizedBox(height: 12),
                       LinearProgressIndicator(
                         value: finished ? 1 : done / (total == 0 ? 1 : total),
@@ -364,9 +379,9 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
                       ),
                       const SizedBox(height: 12),
                       Text(message, style: theme.textTheme.bodyMedium),
-                      if (log.isNotEmpty) ...[
+                      if (finished && log.isNotEmpty) ...[
                         const SizedBox(height: 8),
-                        for (final line in log.take(6))
+                        for (final line in log.take(5))
                           Text(line, style: theme.textTheme.labelSmall),
                       ],
                       if (failures.isNotEmpty) ...[
