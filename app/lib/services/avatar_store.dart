@@ -27,6 +27,36 @@ class AvatarStore {
     }
   }
 
+  /// 只取字节（提色用），不落盘
+  static Future<List<int>?> fetchBytes(String url) async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 12);
+    try {
+      final request = await client.getUrl(Uri.parse(url));
+      request.headers.set(HttpHeaders.refererHeader, 'https://www.bilibili.com/');
+      request.headers.set(HttpHeaders.userAgentHeader, 'Mozilla/5.0 (Linux; Android 14) NijiCal');
+      final response = await request.close();
+      if (response.statusCode != 200) return null;
+      final bytes = await response.fold<List<int>>(<int>[], (a, b) => a..addAll(b));
+      return bytes.isEmpty ? null : bytes;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  /// 把已有的字节按游戏 id 落盘
+  static Future<String?> saveBytes(String gameId, List<int> bytes) async {
+    try {
+      final dir = await _dir();
+      final file = File('${dir.path}/$gameId.jpg');
+      await file.writeAsBytes(bytes);
+      paths[gameId] = file.path;
+      return file.path;
+    } catch (_) {
+      return null;
+    }
+  }
   /// 下载并落盘；失败返回 null，不影响主流程
   static Future<String?> download(String gameId, String url) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 12);

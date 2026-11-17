@@ -1,6 +1,13 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import 'app_state.dart';
+import 'services/avatar_store.dart';
+import 'services/bili_service.dart';
+import 'services/logo_color.dart';
 import 'format.dart';
 import 'model.dart';
 import 'services/ics_service.dart';
@@ -434,13 +441,10 @@ Future<void> showBindSheet(BuildContext context, AppState state, Game game) {
 
 // ---------------------------------------------------------------- 添加游戏
 
-Future<void> showAddGameSheet(BuildContext context, AppState state) async {
-  final nameCtrl = TextEditingController();
-  final shortCtrl = TextEditingController();
-  final uidCtrl = TextEditingController();
-  var accent = accentPresets.first.seed;
-
-  await showModalBottomSheet<void>(
+/// 只填 UID（昵称可选）：名称、头像、标识色都从官号资料里取。
+/// 返回新游戏的 id；用户取消返回 null。
+Future<String?> showAddGameSheet(BuildContext context, AppState state) {
+  return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -448,82 +452,207 @@ Future<void> showAddGameSheet(BuildContext context, AppState state) async {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(AppShapes.sheetRadius)),
     ),
-    builder: (sheetContext) => StatefulBuilder(
-      builder: (context, setSheet) {
-        final theme = Theme.of(context);
-        return Padding(
-          padding: EdgeInsets.fromLTRB(20, 4, 20, 24 + MediaQuery.of(context).viewInsets.bottom),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('添加游戏', style: theme.textTheme.titleLarge),
-              const SizedBox(height: 4),
-              Text('绑定官号 UID 后，刷新时会一并拉取这个号的动态。', style: theme.textTheme.labelSmall),
-              const SizedBox(height: 16),
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: '游戏名称', hintText: '例如：鸣潮'),
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: shortCtrl,
-                decoration: const InputDecoration(labelText: '简称（可选）', hintText: '例如：鸣潮'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: uidCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: '官号 UID（可选）', hintText: 'B 站空间的数字 ID'),
-              ),
-              const SizedBox(height: 16),
-              Text('标识色', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  for (final preset in accentPresets)
-                    GestureDetector(
-                      onTap: () => setSheet(() => accent = preset.seed),
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        margin: const EdgeInsets.only(right: 10),
-                        decoration: BoxDecoration(
-                          color: preset.seed,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: preset.seed.toARGB32() == accent.toARGB32()
-                                ? theme.colorScheme.onSurface
-                                : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    if (nameCtrl.text.trim().isEmpty) return;
-                    state.addGame(
-                      name: nameCtrl.text,
-                      short: shortCtrl.text,
-                      accent: accent.toARGB32(),
-                      uid: uidCtrl.text,
-                    );
-                    Navigator.of(sheetContext).pop();
-                  },
-                  child: const Text('添加'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    ),
+    builder: (_) => _AddGameSheet(state: state),
   );
+}
+
+class _AddGameSheet extends StatefulWidget {
+  const _AddGameSheet({required this.state});
+
+  final AppState state;
+
+  @override
+  State<_AddGameSheet> createState() => _AddGameSheetState();
+}
+
+class _AddGameSheetState extends State<_AddGameSheet> {
+  late final WebViewController _web;
+  final uidCtrl = TextEditingController();
+  final nickCtrl = TextEditingController();
+  Timer? _debounce;
+
+  bool fetching = false;
+  String? fetchedName;
+  List<int>? faceBytes;
+  Color? accent;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    _web = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(
+        'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36',
+      );
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    uidCtrl.dispose();
+    nickCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onUidChanged(String value) {
+    _debounce?.cancel();
+    setState(() => error = null);
+    final mid = value.trim();
+    if (mid.length < 3) {
+      setState(() {
+        fetchedName = null;
+        faceBytes = null;
+        accent = null;
+      });
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 700), () => _fetch(mid));
+  }
+
+  Future<void> _fetch(String mid) async {
+    setState(() => fetching = true);
+    try {
+      final info = await BiliService.userInfo(_web, mid);
+      if (info.name == null) {
+        if (!mounted) return;
+        setState(() {
+          fetching = false;
+          error = '没找到这个 UID，确认一下数字对不对';
+        });
+        return;
+      }
+      List<int>? bytes;
+      Color? color;
+      if (info.face != null) {
+        bytes = await AvatarStore.fetchBytes(info.face!);
+        if (bytes != null) color = await dominantColorOf(Uint8List.fromList(bytes));
+      }
+      if (!mounted) return;
+      setState(() {
+        fetching = false;
+        fetchedName = info.name;
+        faceBytes = bytes;
+        accent = color;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        fetching = false;
+        error = '取资料失败：${'$e'.split('\n').first}';
+      });
+    }
+  }
+
+  Future<void> _submit() async {
+    final name = (fetchedName ?? nickCtrl.text.trim()).trim();
+    if (name.isEmpty) return;
+    final id = widget.state.addGame(
+      name: name,
+      accent: (accent ?? accentPresets.first.seed).toARGB32(),
+      uid: uidCtrl.text.trim(),
+    );
+    if (faceBytes != null) await AvatarStore.saveBytes(id, faceBytes!);
+    if (!mounted) return;
+    Navigator.of(context).pop(id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final canSubmit = (fetchedName ?? nickCtrl.text).trim().isNotEmpty && !fetching;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 4, 20, 24 + MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('添加游戏', style: theme.textTheme.titleLarge),
+          const SizedBox(height: 4),
+          Text('填 B 站官号 UID 就行，名称、头像和标识色会自动取回来。', style: theme.textTheme.labelSmall),
+          const SizedBox(height: 16),
+          TextField(
+            controller: uidCtrl,
+            keyboardType: TextInputType.number,
+            onChanged: _onUidChanged,
+            decoration: InputDecoration(
+              labelText: '官号 UID',
+              hintText: 'B 站空间地址里那串数字',
+              suffixIcon: fetching
+                  ? const Padding(
+                      padding: EdgeInsets.all(14),
+                      child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                    )
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: nickCtrl,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: '昵称（可选）',
+              hintText: '填了就用它，留空用官号名',
+            ),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 10),
+            Text(error!, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error)),
+          ],
+          if (fetchedName != null) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppShapes.nestedRadius),
+                  child: faceBytes == null
+                      ? Container(width: 44, height: 44, color: (accent ?? theme.colorScheme.primary).withValues(alpha: 0.16))
+                      : Image.memory(Uint8List.fromList(faceBytes!), width: 44, height: 44, fit: BoxFit.cover),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(fetchedName!, style: theme.textTheme.titleSmall),
+                      const SizedBox(height: 2),
+                      Text(
+                        '标识色取自头像',
+                        style: theme.textTheme.labelSmall,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: accent ?? theme.colorScheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: canSubmit ? _submit : null,
+              child: Text(uidCtrl.text.trim().isEmpty ? '添加（只填昵称）' : '添加并拉取这个号'),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '添加后会立刻单独刷新这个号，只替换它自己的日程。',
+            style: theme.textTheme.labelSmall,
+          ),
+          // 取 B 站资料要真跑一个 WebView；给 1×1 就够，不占版面
+          SizedBox(width: 1, height: 1, child: WebViewWidget(controller: _web)),
+        ],
+      ),
+    );
+  }
 }

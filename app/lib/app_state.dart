@@ -92,14 +92,20 @@ class AppState extends ChangeNotifier {
     return merged.where((e) => known.containsKey(e.gameId)).toList();
   }
 
-  /// 写入刷新结果；返回这次检测到的改期（没有就是空列表）
-  Future<List<EventChange>> applyLive(List<GameEvent> events) async {
+  /// 写入刷新结果；返回这次检测到的改期（没有就是空列表）。
+  /// [onlyGame] 非空时只替换该游戏的事件，其它游戏保持原样。
+  Future<List<EventChange>> applyLive(List<GameEvent> events, {String? onlyGame}) async {
     final now = DateTime.now();
-    final merged = mergeEvents(liveEvents, events, now);
+    final base = onlyGame == null
+        ? liveEvents
+        : liveEvents.where((e) => e.gameId != onlyGame).toList();
+    final merged = mergeEvents(base, events, now);
+    final freshIds = events.map((e) => e.id).toSet();
+    final kept = base.where((e) => !freshIds.contains(e.id));
 
-    liveEvents = merged.events;
+    liveEvents = [...merged.events, ...kept];
     liveFetchedAt = now;
-    await Prefs.saveLiveEvents(merged.events.map((e) => e.toJson()).toList());
+    await Prefs.saveLiveEvents(liveEvents.map((e) => e.toJson()).toList());
     await Prefs.saveLiveFetchedAt(now);
     notifyListeners();
     return merged.changes;

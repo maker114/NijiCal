@@ -31,6 +31,25 @@ class BiliService {
     return 'not-login';
   }
 
+  /// 一次拿到名称与头像（添加游戏时用）
+  static Future<({String? name, String? face})> userInfo(
+    WebViewController controller,
+    String mid,
+  ) async {
+    final json = await _getJson(controller, '$_api/x/web-interface/card?mid=$mid');
+    final data = json?['data'];
+    final card = data is Map ? data['card'] : null;
+    if (card is Map) {
+      return (name: card['name'] as String?, face: card['face'] as String?);
+    }
+    // 有些号 card 拿不到，退一步用 nav 的 uname
+    final nav = await _getJson(controller, '$_api/x/web-interface/nav');
+    final navData = nav?['data'];
+    if (navData is Map && navData['mid']?.toString() == mid) {
+      return (name: navData['uname'] as String?, face: navData['face'] as String?);
+    }
+    return (name: null, face: null);
+  }
   /// 官号头像地址（来自 card 接口）
   static Future<String?> faceOf(WebViewController controller, String mid) async {
     final json = await _getJson(controller, '$_api/x/web-interface/card?mid=$mid');
