@@ -45,7 +45,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final now = DateTime.now();
     final upcoming = events.where((e) => !e.due.isBefore(now)).toList()
       ..sort((a, b) => a.due.compareTo(b.due));
-    final expired = events.where((e) => e.due.isBefore(now)).toList()
+    final expired = widget.state.expiredEvents()
       ..sort((a, b) => b.due.compareTo(a.due));
 
     if (events.isEmpty) {

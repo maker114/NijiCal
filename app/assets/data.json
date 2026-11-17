@@ -5,7 +5,7 @@
     "generated_by": "tools/build.py",
     "timezone": "Asia/Shanghai",
     "note": "事件全部来自 B 站动态经大模型规范化；官网采集通道已移除（2026-11-17）。",
-    "built_at": "2026-11-17T12:58:46+08:00",
+    "built_at": "2026-11-17T20:09:15+08:00",
     "event_count": 0,
     "game_count": 4
   },
