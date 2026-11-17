@@ -77,9 +77,16 @@ class BiliService {
       final url = '$_api/x/polymer/web-dynamic/v1/feed/space'
           '?host_mid=$mid&offset=${Uri.encodeComponent(offset)}'
           '&timezone_offset=-480&features=$_features';
-      final json = await _getJson(controller, url);
+      var json = await _getJson(controller, url);
       if (json == null) break;
-      final code = json['code'];
+      var code = json['code'];
+      // -352 / -412 是风控与限流：等一会儿重试一次，别直接把这号判死
+      if (code == -352 || code == -412 || code == -509) {
+        await Future<void>.delayed(const Duration(seconds: 4));
+        json = await _getJson(controller, url);
+        code = json?['code'];
+      }
+      if (json == null) break;
       if (code != 0) {
         throw BiliException('接口返回 code=$code ${json['message'] ?? ''}');
       }
