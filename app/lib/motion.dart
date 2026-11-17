@@ -121,46 +121,6 @@ class _FadeSlideInState extends State<FadeSlideIn> {
   }
 }
 
-/// 数字滚动：值变化时旧值上滑淡出、新值下方滑入
-class RollingNumber extends StatelessWidget {
-  const RollingNumber({
-    super.key,
-    required this.value,
-    this.style,
-    this.suffix = '',
-    this.prefix = '',
-  });
-
-  final int value;
-  final TextStyle? style;
-  final String suffix;
-  final String prefix;
-
-  @override
-  Widget build(BuildContext context) {
-    final animate = Motion.enabled(context);
-    return AnimatedSwitcher(
-      duration: animate ? Motion.normal : Duration.zero,
-      switchInCurve: Motion.curve,
-      switchOutCurve: Motion.curve,
-      transitionBuilder: (child, animation) => ClipRect(
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.45),
-            end: Offset.zero,
-          ).animate(animation),
-          child: FadeTransition(opacity: animation, child: child),
-        ),
-      ),
-      child: Text(
-        '$prefix$value$suffix',
-        key: ValueKey<int>(value),
-        style: style,
-      ),
-    );
-  }
-}
-
 /// 骨架屏：灰块 + 扫光
 class Skeleton extends StatefulWidget {
   const Skeleton({
