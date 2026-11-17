@@ -307,8 +307,22 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           log.add('· ${c.summary}');
         }
       }
+      final scope = widget.onlyGameId;
+      final stored = widget.state.liveEvents
+          .where((e) => scope == null || e.gameId == scope)
+          .toList();
+      final visible = stored
+          .where((e) => widget.state.showDeadlineEvents || !AppState.isDeadlineEvent(e))
+          .length;
+      debugPrint('[NijiCal] refresh scope=${scope ?? 'all'} parsed=$added '
+          'stored=${stored.length} visible=$visible fetched=$fetched '
+          'failed=${failures.length} games=${stored.map((e) => e.gameId).toSet()}');
+
+      final hiddenNote = stored.isNotEmpty && visible == 0
+          ? '｜${stored.length} 条全是截止类事件，已被「显示截止事件」开关隐藏'
+          : '';
       _finish('完成：$added 条事件｜$fetched 条动态，${failures.length} 条未通过'
-          '${changes.isEmpty ? '' : '｜改期 ${changes.length} 项'}');
+          '${changes.isEmpty ? '' : '｜改期 ${changes.length} 项'}$hiddenNote');
     } catch (e) {
       _finish('失败：${'$e'.split('\n').first}');
     }
