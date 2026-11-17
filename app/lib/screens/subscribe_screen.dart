@@ -79,14 +79,16 @@ class SubscribeScreen extends StatelessWidget {
               child: Column(
                 children: [
                   SettingRow(
-                    icon: Icons.view_agenda_outlined,
-                    title: '显示结束时间',
-                    subtitle: state.showEndTime ? '列表显示起止区间' : '只显示开始时间',
+                    icon: Icons.event_busy_outlined,
+                    title: '显示截止事件',
+                    subtitle: state.showDeadlineEvents
+                        ? '同时显示「活动结束 / 兑换码截止」这类条目'
+                        : '只看开始与进行中的条目，隐藏「（截止）」',
                     trailing: Switch.adaptive(
-                      value: state.showEndTime,
-                      onChanged: state.setShowEndTime,
+                      value: state.showDeadlineEvents,
+                      onChanged: state.setShowDeadlineEvents,
                     ),
-                    onTap: () => state.setShowEndTime(!state.showEndTime),
+                    onTap: () => state.setShowDeadlineEvents(!state.showDeadlineEvents),
                   ),
                   const Divider(height: 1, indent: 56),
                   SettingRow(
