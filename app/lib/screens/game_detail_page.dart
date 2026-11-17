@@ -172,6 +172,7 @@ class GameDetailPage extends StatelessWidget {
         final upcoming = all.where((e) => !e.due.isBefore(now)).toList();
         final expired = all.where((e) => e.due.isBefore(now)).toList();
         final uid = state.bindings[game.id];
+        final version = state.latestVersionOf(game.id);
         final updated = all
             .map((e) => e.fetchedAt)
             .whereType<DateTime>()
@@ -222,8 +223,10 @@ class GameDetailPage extends StatelessWidget {
                       _row(theme, '更新时间', updated == null ? '还没刷新过' : mdhm(updated)),
                       const SizedBox(height: 8),
                       _row(theme, 'UID', uid ?? '未绑定'),
-                      const SizedBox(height: 8),
-                      _row(theme, '版本', game.versionCurrent ?? '未接入'),
+                      if (version != null) ...[
+                        const SizedBox(height: 8),
+                        _row(theme, '版本', version),
+                      ],
                     ],
                   ),
                 ),
