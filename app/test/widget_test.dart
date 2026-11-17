@@ -1,8 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nijical/app_state.dart';
 import 'package:nijical/format.dart';
 import 'package:nijical/main.dart';
 import 'package:nijical/model.dart';
 import 'package:nijical/services/event_diff.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 GameEvent _ev({
   String id = 'e1',
@@ -27,6 +30,9 @@ GameEvent _ev({
     );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   test('北京时间格式化与区间展示', () {
     final due = DateTime.parse('2026-11-17T17:59:00+08:00');
     expect(mdhm(due), '11月17日 17:59');
@@ -141,4 +147,66 @@ void main() {
     final deduped = dedupeEvents(events);
     expect(deduped, hasLength(2));
     expect(deduped.map((e) => e.id), containsAll(<String>['a', 'd']));
+  });
+  group('游戏库增删与提醒跟随开关', () {
+    AppState readyState() {
+      final state = AppState();
+      state.loading = false;
+      state.data = NijiData(
+        dataMode: 'live',
+        sampleNotice: '',
+        builtAt: '2026-11-17T00:00:00',
+        typeOrder: const ['活动开始', '活动结束'],
+        alarms: const {},
+        games: const [
+          Game(id: 'arknights', name: '明日方舟', short: '方舟', accent: Color(0xFF7FA38F)),
+          Game(id: 'zzz', name: '绝区零', short: '绝区零', accent: Color(0xFFB58F6E)),
+        ],
+        events: const [],
+      );
+      return state;
+    }
+
+    test('添加的游戏出现在库里，移除后消失', () {
+      final state = readyState();
+      expect(state.allGames.length, 2);
+
+      state.addGame(name: '鸣潮', accent: 0xFF123456, uid: '12345');
+      expect(state.allGames.length, 3);
+      final added = state.allGames.last;
+      expect(added.name, '鸣潮');
+      expect(state.bindings[added.id], '12345');
+
+      state.removeGame(added.id);
+      expect(state.allGames.length, 2);
+      expect(state.bindings.containsKey(added.id), isFalse);
+    });
+
+    test('移除内置游戏只是隐藏，可以恢复', () {
+      final state = readyState();
+      final first = state.allGames.first;
+
+      state.removeGame(first.id);
+      expect(state.allGames.length, 1);
+      expect(state.hiddenGames, contains(first.id));
+
+      state.restoreGame(first.id);
+      expect(state.allGames.length, 2);
+    });
+
+    test('关掉截止事件后，截止条目不再排提醒', () {
+      final state = readyState();
+      final t = DateTime.now().add(const Duration(days: 3));
+      state.liveEvents = [
+        _ev(id: 'b1', end: t, title: '活动结束', status: EventStatus.confirmed),
+        _ev(id: 'b2', start: t, title: '活动开启', status: EventStatus.confirmed),
+      ];
+
+      state.setShowDeadlineEvents(false);
+      expect(state.reminderScope.length, 1);
+      expect(state.reminderScope.single.id, 'b2');
+
+      state.setShowDeadlineEvents(true);
+      expect(state.reminderScope.length, 2);
+    });
   });}

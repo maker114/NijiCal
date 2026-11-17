@@ -161,7 +161,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       }
       if (mounted) setState(() => account = name);
 
-      final games = widget.state.data?.gamesById ?? {};
+      final games = widget.state.gameMap;
       final bindings = widget.state.bindings;
       final items = <Map<String, dynamic>>[];
       var rawFetched = 0;

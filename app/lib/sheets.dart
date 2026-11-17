@@ -60,7 +60,6 @@ Future<void> showFilterSheet(BuildContext context, AppState state) {
     child: ListenableBuilder(
       listenable: state,
       builder: (context, _) {
-        final data = state.data!;
         final theme = Theme.of(context);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,7 +77,7 @@ Future<void> showFilterSheet(BuildContext context, AppState state) {
                   selected: state.selectedGames.isEmpty,
                   onTap: state.clearGames,
                 ),
-                for (final g in data.games)
+                for (final g in state.allGames)
                   ChoicePill(
                     label: g.short,
                     dot: g.accent,
@@ -167,7 +166,7 @@ Future<void> showAppearanceSheet(BuildContext context, ThemeController controlle
 // ---------------------------------------------------------------- 事件详情
 
 Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent event) {
-  final game = state.data!.gamesById[event.gameId];
+  final game = state.gameMap[event.gameId];
   final theme = Theme.of(context);
   final urgency = urgencyOf(event.due);
   final accent = UrgencyColors.ofContext(context).of(urgency);
@@ -429,6 +428,102 @@ Future<void> showBindSheet(BuildContext context, AppState state, Game game) {
           ],
         ),
       ],
+    ),
+  );
+}
+
+// ---------------------------------------------------------------- 添加游戏
+
+Future<void> showAddGameSheet(BuildContext context, AppState state) async {
+  final nameCtrl = TextEditingController();
+  final shortCtrl = TextEditingController();
+  final uidCtrl = TextEditingController();
+  var accent = accentPresets.first.seed;
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppShapes.sheetRadius)),
+    ),
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (context, setSheet) {
+        final theme = Theme.of(context);
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 4, 20, 24 + MediaQuery.of(context).viewInsets.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('添加游戏', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 4),
+              Text('绑定官号 UID 后，刷新时会一并拉取这个号的动态。', style: theme.textTheme.labelSmall),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: '游戏名称', hintText: '例如：鸣潮'),
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: shortCtrl,
+                decoration: const InputDecoration(labelText: '简称（可选）', hintText: '例如：鸣潮'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: uidCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: '官号 UID（可选）', hintText: 'B 站空间的数字 ID'),
+              ),
+              const SizedBox(height: 16),
+              Text('标识色', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  for (final preset in accentPresets)
+                    GestureDetector(
+                      onTap: () => setSheet(() => accent = preset.seed),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        margin: const EdgeInsets.only(right: 10),
+                        decoration: BoxDecoration(
+                          color: preset.seed,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: preset.seed.toARGB32() == accent.toARGB32()
+                                ? theme.colorScheme.onSurface
+                                : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    if (nameCtrl.text.trim().isEmpty) return;
+                    state.addGame(
+                      name: nameCtrl.text,
+                      short: shortCtrl.text,
+                      accent: accent.toARGB32(),
+                      uid: uidCtrl.text,
+                    );
+                    Navigator.of(sheetContext).pop();
+                  },
+                  child: const Text('添加'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     ),
   );
 }

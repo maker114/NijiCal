@@ -76,6 +76,40 @@ class GameDetailPage extends StatelessWidget {
                     child: Text(uid == null ? '绑定官号 UID' : '修改 / 解绑 UID'),
                   ),
                 ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () async {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogContext) => AlertDialog(
+                          title: Text('移除 ${game.name}？'),
+                          content: const Text('会同时清掉它的绑定与本地日程，重新添加后可以再刷新回来。'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(dialogContext).pop(false),
+                              child: const Text('取消'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.of(dialogContext).pop(true),
+                              child: const Text('移除'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok != true) return;
+                      if (!context.mounted) return;
+                      Navigator.of(context).pop();
+                      await Future<void>.delayed(const Duration(milliseconds: 220));
+                      if (!context.mounted) return;
+                      Navigator.of(context).pop();
+                      state.removeGame(game.id);
+                    },
+                    style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+                    child: const Text('从游戏库移除'),
+                  ),
+                ),
               ],
             ),
           );

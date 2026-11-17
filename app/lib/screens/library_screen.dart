@@ -29,7 +29,7 @@ class LibraryScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (games.isEmpty)
-              const EmptyState(title: '没有匹配的游戏', body: '换个关键词试试。', icon: Icons.search_off)
+              const EmptyState(title: '游戏库是空的', body: '点右上角的 ＋ 添加游戏。', icon: Icons.add_circle_outline)
             else
               for (final game in games) ...[
                 _GameCard(game: game, state: state),

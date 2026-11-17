@@ -86,9 +86,15 @@ class SubscribeScreen extends StatelessWidget {
                         : '只看开始与进行中的条目，隐藏「（截止）」',
                     trailing: Switch.adaptive(
                       value: state.showDeadlineEvents,
-                      onChanged: state.setShowDeadlineEvents,
+                      onChanged: (v) async {
+                        state.setShowDeadlineEvents(v);
+                        await onReschedule();
+                      },
                     ),
-                    onTap: () => state.setShowDeadlineEvents(!state.showDeadlineEvents),
+                    onTap: () async {
+                      state.setShowDeadlineEvents(!state.showDeadlineEvents);
+                      await onReschedule();
+                    },
                   ),
                   const Divider(height: 1, indent: 56),
                   SettingRow(

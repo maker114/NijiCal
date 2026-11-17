@@ -30,7 +30,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       listenable: widget.state,
       builder: (context, _) {
         final events = widget.state.visibleEvents();
-        final games = widget.state.data!.gamesById;
+        final games = widget.state.gameMap;
         return widget.state.calendarView
             ? _buildCalendar(context, events, games)
             : _buildList(context, events, games);
