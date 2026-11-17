@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../format.dart';
 import '../model.dart';
+import '../motion.dart';
 import '../sheets.dart';
 
 import '../widgets.dart';
@@ -31,8 +32,8 @@ class LibraryScreen extends StatelessWidget {
             if (games.isEmpty)
               const EmptyState(title: '游戏库是空的', body: '点右上角的 ＋ 添加游戏。', icon: Icons.add_circle_outline)
             else
-              for (final game in games) ...[
-                _GameCard(game: game, state: state),
+              for (var gi = 0; gi < games.length; gi++) ...[
+                FadeSlideIn(index: gi, child: _GameCard(game: games[gi], state: state)),
                 const SizedBox(height: 10),
               ],
           ],

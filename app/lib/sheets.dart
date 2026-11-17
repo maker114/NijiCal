@@ -11,6 +11,7 @@ import 'services/logo_color.dart';
 import 'services/uid.dart';
 import 'format.dart';
 import 'model.dart';
+import 'motion.dart';
 import 'services/ics_service.dart';
 import 'theme.dart';
 import 'theme_controller.dart';
@@ -197,7 +198,8 @@ Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent eve
   return _showSheet<void>(
     context,
     scrollable: true,
-    child: ListView(
+    child: FadeSlideIn(
+      child: ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
       shrinkWrap: true,
       children: [
@@ -299,6 +301,7 @@ Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent eve
         ),
       ],
     ),
+      ),
   );
 }
 

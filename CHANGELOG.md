@@ -3,6 +3,25 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号与 `app/pubspec.yaml` 同源。
 分类只用：新增 / 变更 / 修复 / 移除。
 
+## [2.12.0] - 2026-11-17
+
+### 新增
+- **动效基元 `lib/motion.dart`**（参考 reactbits 的思路，全部用 Flutter 原生重写，
+  没有引入任何 web 依赖）：
+  - `RollingNumber` 数字滚动（对应 CountUp）
+  - `Skeleton` / `SkeletonList` 骨架屏 + 扫光（对应 Shimmer）
+  - `ShinyText` 光泽扫过（对应 ShinyText）
+  - `FadeSlideIn` 逐项入场（对应列表 stagger）
+  - `PressScale` 按压缩放（对应按压反馈）
+  - 统一时长/曲线，并在系统开启「移除动画」时**全部降级为直给**（无障碍）。
+
+### 变更
+- 倒计时里的数字改成滚动（「还有 3 天」→ 值变化时旧值上滑淡出）。
+- 首次加载由转圈改为**骨架屏**，不再是空白等一个 spinner。
+- 日历列表、游戏库卡片**逐项淡入上移**；详情抽屉内容淡入。
+- 切换底部标签整页淡出→换页→淡入（保留各页滚动位置）。
+- 刷新弹窗的两条进度条改为数值平滑过渡。
+- 日历选中日轻微放大。
 ## [2.11.1] - 2026-11-17
 
 ### 新增

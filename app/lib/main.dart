@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 
 import 'app_state.dart';
+import 'motion.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/bili_pages.dart';
@@ -169,11 +170,24 @@ class _ShellBody extends StatefulWidget {
 
 class _ShellBodyState extends State<_ShellBody> {
   int tab = 0;
+  bool _fading = false;
+
+  /// 切标签时先淡出再换页，避免整块内容硬切
+  Future<void> _select(int i) async {
+    if (i == tab) return;
+    setState(() => _fading = true);
+    await Future<void>.delayed(const Duration(milliseconds: 90));
+    if (!mounted) return;
+    setState(() {
+      tab = i;
+      _fading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     if (widget.state.loading) {
-      return Scaffold(body: Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary)));
+      return const Scaffold(body: SafeArea(child: SkeletonList(rows: 7)));
     }
     if (widget.state.error != null) {
       return Scaffold(
@@ -263,7 +277,11 @@ class _ShellBodyState extends State<_ShellBody> {
           const SizedBox(width: 4),
         ],
       ),
-      body: IndexedStack(
+      body: AnimatedOpacity(
+        opacity: _fading ? 0 : 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: IndexedStack(
         index: tab,
         children: [
           CalendarScreen(state: widget.state),
@@ -274,10 +292,11 @@ class _ShellBodyState extends State<_ShellBody> {
             onReschedule: widget.onReschedule,
           ),
         ],
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: tab,
-        onDestinationSelected: (i) => setState(() => tab = i),
+        onDestinationSelected: _select,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: '日历'),
           NavigationDestination(icon: Icon(Icons.grid_view_outlined), selectedIcon: Icon(Icons.grid_view), label: '游戏库'),

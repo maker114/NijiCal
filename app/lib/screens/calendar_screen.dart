@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../format.dart';
 import '../model.dart';
+import '../motion.dart';
 import '../sheets.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -51,8 +52,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (events.isEmpty) {
       final hiddenDeadlines = widget.state.allEvents.where(AppState.isDeadlineEvent).length;
       return ListView(
-        children: [
-          const SizedBox(height: 80),
+        children: [FadeSlideIn(
+          child: const SizedBox(height: 80),
+        ),
           EmptyState(
             title: hiddenDeadlines > 0 ? '截止类事件已隐藏' : '还没有日程',
             body: hiddenDeadlines > 0
@@ -65,6 +67,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     final children = <Widget>[];
+    var rowIndex = 0;
     String? lastDay;
     for (final event in upcoming) {
       final day = dayPartOf(event.due);
@@ -72,7 +75,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         children.add(_DayHeader(day: day));
         lastDay = day;
       }
-      children.add(_EventTile(event: event, game: games[event.gameId], state: widget.state));
+      children.add(_EventTile(event: event, game: games[event.gameId], state: widget.state, index: rowIndex++));
     }
 
     if (expired.isNotEmpty) children.add(_ExpiredSection(events: expired, games: games, state: widget.state));
@@ -191,7 +194,9 @@ class _DayHeader extends StatelessWidget {
 }
 
 class _EventTile extends StatelessWidget {
-  const _EventTile({required this.event, required this.game, required this.state});
+  const _EventTile({required this.event, required this.game, required this.state, this.index = 0});
+
+  final int index;
 
   final GameEvent event;
   final Game? game;
@@ -199,17 +204,19 @@ class _EventTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        EventRow(
-          event: event,
-          game: game,
-          accent: game == null ? null : state.gameAccentOf(game!),
-
-          onTap: () => showDetailSheet(context, state, event),
-        ),
-        const Divider(height: 1, indent: 16, endIndent: 16),
-      ],
+    return FadeSlideIn(
+      index: index,
+      child: Column(
+        children: [
+          EventRow(
+            event: event,
+            game: game,
+            accent: game == null ? null : state.gameAccentOf(game!),
+            onTap: () => showDetailSheet(context, state, event),
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+        ],
+      ),
     );
   }
 }

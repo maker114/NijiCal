@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'format.dart';
+import 'motion.dart';
 import 'services/avatar_store.dart';
 import 'model.dart';
 import 'theme.dart';
@@ -228,10 +229,7 @@ class EventRow extends StatelessWidget {
                   style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: accentColor),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  countdown.text,
-                  style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                ),
+                _CountdownText(countdown: countdown.text, scheme: scheme, theme: theme),
               ],
             ),
           ],
@@ -280,5 +278,25 @@ class GameAvatar extends StatelessWidget {
         style: TextStyle(fontSize: size * 0.4, fontWeight: FontWeight.w700, color: color),
       ),
     );
+  }
+}
+
+/// 倒计时文本：数字做滚动，前后缀原样保留
+class _CountdownText extends StatelessWidget {
+  const _CountdownText({required this.countdown, required this.scheme, required this.theme});
+
+  final String countdown;
+  final ColorScheme scheme;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant);
+    final match = RegExp(r'(\d+)').firstMatch(countdown);
+    if (match == null) return Text(countdown, style: style);
+    final number = int.tryParse(match.group(1)!) ?? 0;
+    final prefix = countdown.substring(0, match.start);
+    final suffix = countdown.substring(match.end);
+    return RollingNumber(value: number, prefix: prefix, suffix: suffix, style: style);
   }
 }
