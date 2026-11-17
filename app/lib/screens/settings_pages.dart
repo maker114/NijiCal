@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import '../model.dart';
 import '../format.dart';
 import '../services/ics_service.dart';
 import '../services/reminder_service.dart';
 import '../theme.dart';
+import '../widgets.dart';
 import '../version.dart';
 import 'bili_pages.dart';
 
@@ -277,7 +279,7 @@ class ExportPage extends StatelessWidget {
                         child: FilledButton(
                           onPressed: () => IcsService.shareFile(
                             events: state.reminderScope,
-                            games: data.gamesById,
+                            games: state.gameMap,
                             alarms: data.alarms,
                           ),
                           child: Text('导出 ${state.reminderScope.length} 条日程'),
@@ -364,6 +366,26 @@ class AboutPage extends StatelessWidget {
                   ),
                 ),
               ),
+              if (state.hiddenGames.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                sectionTitle(context, '已移除的游戏'),
+                Card(
+                  child: Column(
+                    children: [
+                      for (final g in state.data?.games ?? const <Game>[])
+                        if (state.hiddenGames.contains(g.id))
+                          ListTile(
+                            leading: GameAvatar(game: g, color: g.accent, size: 36),
+                            title: Text(g.name, style: theme.textTheme.bodyMedium),
+                            trailing: TextButton(
+                              onPressed: () => state.restoreGame(g.id),
+                              child: const Text('恢复'),
+                            ),
+                          ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               sectionTitle(context, '边界'),
               Card(

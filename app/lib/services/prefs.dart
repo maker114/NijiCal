@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../model.dart';
+
 /// 本机持久化：官号绑定、提醒开关。全部存在设备上，不联网。
 abstract class Prefs {
   static const _bindingsKey = 'nijical.bindings';
@@ -124,5 +126,44 @@ abstract class Prefs {
   static Future<void> saveShowDeadlineEvents(bool value) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setBool(_showDeadlineKey, value);
+  }
+  // 自定义游戏与被移除的内置游戏
+  static const _customGamesKey = 'nijical.customGames';
+  static const _hiddenGamesKey = 'nijical.hiddenGames';
+
+  static Future<List<Game>> loadCustomGames() async {
+    final sp = await SharedPreferences.getInstance();
+    final raw = sp.getStringList(_customGamesKey) ?? const [];
+    final out = <Game>[];
+    for (final item in raw) {
+      try {
+        final j = jsonDecode(item);
+        if (j is Map) out.add(Game.fromJson(j.cast<String, dynamic>()));
+      } catch (_) {}
+    }
+    return out;
+  }
+
+  static Future<void> saveCustomGames(List<Game> games) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setStringList(
+      _customGamesKey,
+      games.map((g) => jsonEncode({
+            'id': g.id,
+            'name': g.name,
+            'short': g.short,
+            'accent': '#${g.accent.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
+          })).toList(),
+    );
+  }
+
+  static Future<Set<String>> loadHiddenGames() async {
+    final sp = await SharedPreferences.getInstance();
+    return (sp.getStringList(_hiddenGamesKey) ?? const []).toSet();
+  }
+
+  static Future<void> saveHiddenGames(Set<String> ids) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setStringList(_hiddenGamesKey, ids.toList());
   }
 }

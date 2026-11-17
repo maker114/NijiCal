@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 
 import 'app_state.dart';
 import 'screens/calendar_screen.dart';
@@ -50,6 +50,7 @@ class _NijiCalAppState extends State<NijiCalApp> {
       await themeController.restore();
       await state.restore();
       await AvatarStore.load();
+      await state.loadGames();
     } catch (_) {}
     await state.load();
     try {
@@ -223,22 +224,9 @@ class _ShellBodyState extends State<_ShellBody> {
             ),
           if (tab == 1)
             IconButton(
-              tooltip: '复制绑定配置',
-              onPressed: () async {
-                final json = widget.state.bindingsJson();
-                if (widget.state.bindings.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('还没绑定官号')),
-                  );
-                  return;
-                }
-                await Clipboard.setData(ClipboardData(text: json));
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('绑定配置已复制，可以交给数据端采集')),
-                );
-              },
-              icon: const Icon(Icons.copy_all_outlined),
+              tooltip: '添加游戏',
+              onPressed: () => showAddGameSheet(context, widget.state),
+              icon: const Icon(Icons.add),
             ),
           if (tab == 2)
             IconButton(

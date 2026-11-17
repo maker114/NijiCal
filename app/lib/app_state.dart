@@ -77,12 +77,19 @@ class AppState extends ChangeNotifier {
   /// 内置数据 + 刷新结果的合并视图（同源 URL 以刷新结果为准）
   List<GameEvent> get allEvents {
     final bundled = data?.events ?? const <GameEvent>[];
-    if (liveEvents.isEmpty) return bundled;
-    final liveUrls = liveEvents.map((e) => e.sourceUrl).whereType<String>().toSet();
-    return [
-      ...liveEvents,
-      ...bundled.where((e) => !liveUrls.contains(e.sourceUrl)),
-    ];
+    final List<GameEvent> merged;
+    if (liveEvents.isEmpty) {
+      merged = bundled;
+    } else {
+      final liveUrls = liveEvents.map((e) => e.sourceUrl).whereType<String>().toSet();
+      merged = [
+        ...liveEvents,
+        ...bundled.where((e) => !liveUrls.contains(e.sourceUrl)),
+      ];
+    }
+    // 游戏被移除后，它的日程也不再显示
+    final known = gameMap;
+    return merged.where((e) => known.containsKey(e.gameId)).toList();
   }
 
   /// 写入刷新结果；返回这次检测到的改期（没有就是空列表）
@@ -162,12 +169,66 @@ class AppState extends ChangeNotifier {
     return list;
   }
 
-  List<Game> get games {
-    final all = data?.games ?? const <Game>[];
-    if (search.trim().isEmpty) return all;
-    final q = search.trim().toLowerCase();
-    return all.where((g) => g.name.toLowerCase().contains(q) || g.short.toLowerCase().contains(q)).toList();
+  /// 用户自己加的游戏（存在本机）
+  final List<Game> customGames = [];
+
+  /// 被用户从游戏库移除的内置游戏
+  final Set<String> hiddenGames = {};
+
+  /// 游戏库的全集：内置（去掉被移除的）+ 自定义
+  List<Game> get allGames => [
+        ...?data?.games.where((g) => !hiddenGames.contains(g.id)),
+        ...customGames,
+      ];
+
+  Map<String, Game> get gameMap => {for (final g in allGames) g.id: g};
+
+  Future<void> loadGames() async {
+    customGames
+      ..clear()
+      ..addAll(await Prefs.loadCustomGames());
+    hiddenGames
+      ..clear()
+      ..addAll(await Prefs.loadHiddenGames());
+    notifyListeners();
   }
+
+  /// 新增一款游戏；返回新游戏的 id
+  String addGame({required String name, String? short, required int accent, String? uid}) {
+    final id = 'custom-${DateTime.now().millisecondsSinceEpoch}';
+    customGames.add(Game(
+      id: id,
+      name: name.trim(),
+      short: (short == null || short.trim().isEmpty) ? name.trim() : short.trim(),
+      accent: Color(accent),
+    ));
+    if (uid != null && uid.trim().isNotEmpty) bindings[id] = uid.trim();
+    Prefs.saveCustomGames(customGames);
+    Prefs.saveBindings(bindings);
+    notifyListeners();
+    return id;
+  }
+
+  void restoreGame(String id) {
+    hiddenGames.remove(id);
+    Prefs.saveHiddenGames(hiddenGames);
+    notifyListeners();
+  }
+  /// 移除一款游戏：自定义的直接删，内置的只是隐藏
+  void removeGame(String id) {
+    final isCustom = customGames.any((g) => g.id == id);
+    if (isCustom) {
+      customGames.removeWhere((g) => g.id == id);
+      Prefs.saveCustomGames(customGames);
+    } else {
+      hiddenGames.add(id);
+      Prefs.saveHiddenGames(hiddenGames);
+    }
+    bindings.remove(id);
+    Prefs.saveBindings(bindings);
+    notifyListeners();
+  }
+  List<Game> get games => allGames;
 
   int countWithin(double hours) {
     final events = allEvents;
@@ -268,7 +329,9 @@ class AppState extends ChangeNotifier {
 
   /// 需要提醒的事件：只看已绑定的游戏；一个都没绑就全部提醒
   List<GameEvent> get reminderScope {
-    final events = allEvents;
+    final events = allEvents
+        .where((e) => showDeadlineEvents || !isDeadlineEvent(e))
+        .toList();
     if (bindings.isEmpty) return events;
     return events.where((e) => bindings.containsKey(e.gameId)).toList();
   }
