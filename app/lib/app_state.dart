@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'format.dart';
 import 'model.dart';
+import 'services/event_diff.dart';
 import 'services/prefs.dart';
 
 enum RangeFilter {
@@ -66,12 +67,17 @@ class AppState extends ChangeNotifier {
     ];
   }
 
-  Future<void> applyLive(List<GameEvent> events) async {
-    liveEvents = [...events];
-    liveFetchedAt = DateTime.now();
-    await Prefs.saveLiveEvents(events.map((e) => e.toJson()).toList());
-    await Prefs.saveLiveFetchedAt(liveFetchedAt!);
+  /// 写入刷新结果；返回这次检测到的改期（没有就是空列表）
+  Future<List<EventChange>> applyLive(List<GameEvent> events) async {
+    final now = DateTime.now();
+    final merged = mergeEvents(liveEvents, events, now);
+
+    liveEvents = merged.events;
+    liveFetchedAt = now;
+    await Prefs.saveLiveEvents(merged.events.map((e) => e.toJson()).toList());
+    await Prefs.saveLiveFetchedAt(now);
     notifyListeners();
+    return merged.changes;
   }
 
   Future<void> load() async {

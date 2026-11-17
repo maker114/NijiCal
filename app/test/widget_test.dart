@@ -1,6 +1,30 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nijical/format.dart';
 import 'package:nijical/main.dart';
+import 'package:nijical/model.dart';
+import 'package:nijical/services/event_diff.dart';
+
+GameEvent _ev({
+  String id = 'e1',
+  String title = '活动结束',
+  DateTime? start,
+  DateTime? end,
+  List<Revision> revisions = const [],
+  EventStatus status = EventStatus.confirmed,
+  String? hash,
+}) =>
+    GameEvent(
+      id: id,
+      gameId: 'arknights',
+      type: end == null ? '活动开始' : '活动结束',
+      title: title,
+      start: start,
+      end: end,
+      status: status,
+      confidence: 90,
+      sourceHash: hash,
+      revisions: revisions,
+    );
 
 void main() {
   test('北京时间格式化与区间展示', () {
@@ -27,6 +51,70 @@ void main() {
     expect(dayPartOf(DateTime.parse('2026-11-17T23:59:00+08:00')), '2026-11-17');
     expect(monthDayLabel('2026-11-17'), '11 月 17 日');
     expect(weekdayLabelOf('2026-11-17'), '周二');
+  });
+
+  group('事件 diff（按原文指纹判定）', () {
+    final t1 = DateTime.parse('2026-12-01T23:59:00+08:00');
+    final t2 = DateTime.parse('2026-12-03T23:59:00+08:00');
+    const h1 = 'aaaa1111';
+    const h2 = 'bbbb2222';
+
+    test('原文没变、时间抖动 → 不算改期', () {
+      final old = [_ev(end: t1, hash: h1)];
+      final fresh = [_ev(end: t2, hash: h1)];
+      expect(diffEvents(old, fresh), isEmpty);
+    });
+
+    test('原文变了且时间变了 → 记一条改期', () {
+      final changes = diffEvents([_ev(end: t1, hash: h1)], [_ev(end: t2, hash: h2)]);
+      expect(changes, hasLength(1));
+      expect(changes.first.field, '结束时间');
+      expect(changes.first.to, contains('12 月 3 日'));
+    });
+
+    test('原文变了但时间没变 → 不算改期', () {
+      final changes = diffEvents([_ev(end: t1, hash: h1)], [_ev(end: t1, hash: h2)]);
+      expect(changes, isEmpty);
+    });
+
+    test('新增事件不算变更', () {
+      expect(diffEvents([], [_ev(end: t1, hash: h1)]), isEmpty);
+    });
+
+    test('历史数据没有指纹 → 不判定改期', () {
+      final changes = diffEvents([_ev(end: t1)], [_ev(end: t2, hash: h1)]);
+      expect(changes, isEmpty);
+    });
+
+    test('合并时原文没变就沿用旧事件，不被模型抖动覆盖', () {
+      final old = [_ev(end: t1, hash: h1)];
+      final fresh = [_ev(end: t2, hash: h1)];
+      final merged = mergeEvents(old, fresh, DateTime.now());
+      expect(merged.changes, isEmpty);
+      expect(merged.events.single.end, t1);
+    });
+
+    test('withChanges 会追加历史并把状态标成已变更', () {
+      final changes = diffEvents([_ev(end: t1, hash: h1)], [_ev(end: t2, hash: h2)]);
+      final updated = withChanges(_ev(end: t2, hash: h2), changes, DateTime.now());
+      expect(updated.status, EventStatus.changed);
+      expect(updated.revisions, hasLength(1));
+      expect(updated.revisions.first.field, '结束时间');
+    });
+
+    test('事件经 JSON 往返后仍是同一时刻，不会被误判成改期', () {
+      // 回归：JSON 里是 +08:00，解析成 UTC 瞬时点；曾经在别处又加 8 小时，
+      // 导致每次刷新都把全部事件判成“改期”。
+      final fresh = _ev(end: DateTime.parse('2026-11-26T11:59:00+08:00'), hash: h1);
+      final stored = GameEvent.fromJson(fresh.toJson());
+      expect(diffEvents([stored], [fresh]), isEmpty);
+      expect(mdhm(stored.end!), '11月26日 11:59');
+    });
+
+    test('内容指纹稳定：同一段文本得到同一个值', () {
+      expect(contentHash('活动 11 月 20 日截止'), contentHash('活动 11 月 20 日截止'));
+      expect(contentHash('活动 11 月 20 日截止'), isNot(contentHash('活动 11 月 21 日截止')));
+    });
   });
 
   testWidgets('启动后能加载内置数据并渲染日历', (tester) async {

@@ -5,8 +5,10 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../app_state.dart';
 import '../model.dart';
 import '../services/bili_service.dart';
+import '../services/event_diff.dart';
 import '../services/llm_normalizer.dart';
 import '../services/prefs.dart';
+import '../services/reminder_service.dart';
 import '../theme.dart';
 
 /// 应用内登录：cookie 落在 WebView 自己的 jar 里，App 代码不读也不存 SESSDATA。
@@ -223,6 +225,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           author: BiliService.authorOf(item),
           dynamicId: BiliService.idOf(item),
           fetchedAt: now,
+          sourceHash: contentHash(text),
         );
         // 游戏以绑定关系为准（模型判错时仍归到你绑的那个号）
         GameEvent build({required String type, DateTime? start, DateTime? end, String? title}) => GameEvent(
@@ -240,6 +243,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
               sourceUrl: event.sourceUrl,
               version: event.version,
               tags: event.tags,
+              sourceHash: event.sourceHash,
               revisions: const [],
             );
 
@@ -268,8 +272,22 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         _finish('没有解析出事件（$fetched 条动态全部未通过），已保留原有 ${widget.state.liveEvents.length} 条');
         return;
       }
-      await widget.state.applyLive(events.values.toList());
-      _finish('完成：$added 条事件｜$fetched 条动态，${failures.length} 条未通过');
+      final changes = await widget.state.applyLive(events.values.toList());
+      if (changes.isNotEmpty) {
+        // 改期是这套链路最有价值的部分：立刻推一条，别等用户自己发现
+        await ReminderService.notifyNow(
+          title: '官方改期：${changes.length} 项',
+          body: changes.length == 1
+              ? changes.first.summary
+              : '共 ${changes.length} 项，例如：${changes.first.summary}',
+        );
+        log.add('检测到 ${changes.length} 项变化，已发一条改期通知');
+        for (final c in changes.take(3)) {
+          log.add('· ${c.summary}');
+        }
+      }
+      _finish('完成：$added 条事件｜$fetched 条动态，${failures.length} 条未通过'
+          '${changes.isEmpty ? '' : '｜改期 ${changes.length} 项'}');
     } catch (e) {
       _finish('失败：${'$e'.split('\n').first}');
     }
