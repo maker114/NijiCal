@@ -197,7 +197,11 @@ $text
       if (tags.length >= 5) break;
     }
 
-    final confidence = ((json['confidence'] as num?)?.toInt() ?? 70).clamp(0, 100);
+    final rawConfidence = json['confidence'];
+    final confidence = (rawConfidence is num
+            ? rawConfidence.toInt()
+            : int.tryParse('$rawConfidence') ?? 70)
+        .clamp(0, 100);
 
     return LlmOutcome(
       event: NormalizedEvent(
