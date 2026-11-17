@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import 'format.dart';
+import 'services/avatar_store.dart';
 import 'model.dart';
 import 'theme.dart';
 
@@ -150,19 +153,36 @@ class EmptyState extends StatelessWidget {
 ///
 /// 照 GuideLine 的 TaskTile 语汇：**平铺行 + 分隔线**，不做卡片堆叠。
 class EventRow extends StatelessWidget {
-  const EventRow({super.key, required this.event, required this.game, required this.onTap});
+  const EventRow({
+    super.key,
+    required this.event,
+    required this.game,
+    required this.onTap,
+    this.accent,
+    this.showEnd = false,
+  });
 
   final GameEvent event;
   final Game? game;
   final VoidCallback onTap;
+
+  /// 游戏标识色（可被用户改过），不传就退回数据里的默认色
+  final Color? accent;
+
+  /// 关闭时只显示开始时间；打开才显示起止区间
+  final bool showEnd;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final urgency = urgencyOf(event.due);
-    final accent = UrgencyColors.ofContext(context).of(urgency);
+    final accentColor = UrgencyColors.ofContext(context).of(urgency);
     final countdown = countdownOf(event.due);
+    final gameColor = accent ?? game?.accent ?? scheme.primary;
+    final timeText = showEnd
+        ? eventRangeShort(event.start, event.end)
+        : (event.start != null ? '开始 ${shortDate(event.start!)} ${hm(event.start!)}' : '截止 ${shortDate(event.due)} ${hm(event.due)}');
 
     return InkWell(
       onTap: onTap,
@@ -171,19 +191,7 @@ class EventRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: (game?.accent ?? scheme.primary).withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(AppShapes.nestedRadius),
-              ),
-              child: Text(
-                game?.initial ?? '·',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: game?.accent ?? scheme.primary),
-              ),
-            ),
+            GameAvatar(game: game, color: gameColor, size: 38),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -197,7 +205,7 @@ class EventRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${event.type} · ${eventRangeShort(event.start, event.end)}',
+                    '${event.type} · $timeText',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall,
@@ -211,7 +219,7 @@ class EventRow extends StatelessWidget {
               children: [
                 Text(
                   urgencyLabel(urgency),
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: accent),
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: accentColor),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -222,6 +230,48 @@ class EventRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 游戏头像：有缓存过的官号头像就显示头像，否则退回首字色块
+class GameAvatar extends StatelessWidget {
+  const GameAvatar({super.key, required this.game, required this.color, this.size = 38});
+
+  final Game? game;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final path = game == null ? null : AvatarStore.pathOf(game!.id);
+    final radius = BorderRadius.circular(AppShapes.nestedRadius);
+
+    if (path != null) {
+      return ClipRRect(
+        borderRadius: radius,
+        child: Image.file(
+          File(path),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _fallback(radius),
+        ),
+      );
+    }
+    return _fallback(radius);
+  }
+
+  Widget _fallback(BorderRadius radius) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: radius),
+      child: Text(
+        game?.initial ?? '·',
+        style: TextStyle(fontSize: size * 0.4, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }

@@ -7,6 +7,7 @@ import '../model.dart';
 import '../services/bili_service.dart';
 import '../services/event_diff.dart';
 import '../services/llm_normalizer.dart';
+import '../services/avatar_store.dart';
 import '../services/prefs.dart';
 import '../services/reminder_service.dart';
 import '../theme.dart';
@@ -175,6 +176,10 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         try {
           final list = await BiliService.fetchSpace(controller, entry.value, pages: 2);
           rawFetched += list.length;
+
+          // 顺手把官号头像存下来，列表和详情用真头像
+          final face = await BiliService.faceOf(controller, entry.value);
+          if (face != null) await AvatarStore.download(entry.key, face);
 
           // 预筛：同一账号只送“看得出是事件”的前 8 条，98 条全送模型又慢又贵
           var picked = 0;

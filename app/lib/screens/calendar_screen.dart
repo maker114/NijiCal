@@ -8,8 +8,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import '../widgets/day_ring.dart';
 
-/// 日历页 —— 直接搬 GuideLine 的 `task_calendar_page.dart`：
-/// 月视图 + 日期圆环（一条事件一段弧）+ 点某天在下面列出当天事件。
+/// 主界面：默认是可滚动的列表，右上角可切成日历。
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key, required this.state});
 
@@ -20,99 +19,246 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  late DateTime _month;
+  DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
   String? _picked;
-
-  @override
-  void initState() {
-    super.initState();
-    final now = DateTime.now();
-    _month = DateTime(now.year, now.month);
-  }
 
   String get _selected => _picked ?? todayKey();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return ListenableBuilder(
       listenable: widget.state,
       builder: (context, _) {
         final events = widget.state.visibleEvents();
         final games = widget.state.data!.gamesById;
-        final marks = marksByDate(events, games);
-        final dayEvents = eventsOn(_selected, events);
-        final undated = widget.state.data!.events.where((e) => e.start == null && e.end == null).length;
-
-        return ListView(
-          padding: const EdgeInsets.only(bottom: 24),
-          children: <Widget>[
-            _MonthBar(
-              month: _month,
-              onPrevious: () => setState(() => _month = DateTime(_month.year, _month.month - 1)),
-              onNext: () => setState(() => _month = DateTime(_month.year, _month.month + 1)),
-              onToday: () => setState(() {
-                final now = DateTime.now();
-                _month = DateTime(now.year, now.month);
-                _picked = todayKey();
-              }),
-            ),
-            const _WeekdayHeader(),
-            _MonthGrid(
-              month: _month,
-              marks: marks,
-              selected: _selected,
-              onSelect: (date) => setState(() => _picked = date),
-            ),
-            const SizedBox(height: 8),
-            _TagBar(state: widget.state),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      '${monthDayLabel(_selected)} · ${weekdayLabelOf(_selected)}'
-                      '${dayEvents.isEmpty ? '' : ' · ${dayEvents.length} 条'}',
-                      style: theme.textTheme.labelLarge,
-                    ),
-                  ),
-                  if (undated > 0) Text('另有 $undated 条没排期', style: theme.textTheme.labelSmall),
-                ],
-              ),
-            ),
-            if (dayEvents.isEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Text('这一天没有事件', style: theme.textTheme.bodySmall),
-              )
-            else
-              for (final event in dayEvents)
-                Column(
-                  children: <Widget>[
-                    EventRow(
-                      event: event,
-                      game: games[event.gameId],
-                      onTap: () => showDetailSheet(context, widget.state, event),
-                    ),
-                    const Divider(height: 1, indent: 16, endIndent: 16),
-                  ],
-                ),
-          ],
-        );
+        return widget.state.calendarView
+            ? _buildCalendar(context, events, games)
+            : _buildList(context, events, games);
       },
+    );
+  }
+
+  // ---------------------------------------------------------------- 列表
+
+  Widget _buildList(BuildContext context, List<GameEvent> events, Map<String, Game> games) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final upcoming = events.where((e) => !e.due.isBefore(now)).toList()
+      ..sort((a, b) => a.due.compareTo(b.due));
+    final expired = events.where((e) => e.due.isBefore(now)).toList()
+      ..sort((a, b) => b.due.compareTo(a.due));
+
+    if (events.isEmpty) {
+      return ListView(
+        children: const [
+          SizedBox(height: 80),
+          EmptyState(
+            title: '还没有日程',
+            body: '绑定官号后，在订阅页从 B 站刷新一次，事件会落到这里。',
+            icon: Icons.event_note_outlined,
+          ),
+        ],
+      );
+    }
+
+    final children = <Widget>[];
+    String? lastDay;
+    for (final event in upcoming) {
+      final day = dayPartOf(event.due);
+      if (day != lastDay) {
+        children.add(_DayHeader(day: day));
+        lastDay = day;
+      }
+      children.add(_EventTile(event: event, game: games[event.gameId], state: widget.state));
+    }
+
+    if (expired.isNotEmpty) children.add(_ExpiredSection(events: expired, games: games, state: widget.state));
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: Text(
+            upcoming.isEmpty ? '没有即将到来的日程' : '接下来 ${upcoming.length} 条',
+            style: theme.textTheme.labelSmall,
+          ),
+        ),
+        ...children,
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------- 日历
+
+  Widget _buildCalendar(BuildContext context, List<GameEvent> events, Map<String, Game> games) {
+    final theme = Theme.of(context);
+    final marks = marksByDate(events, games, widget.state);
+    final dayEvents = eventsOn(_selected, events);
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: <Widget>[
+        _MonthBar(
+          month: _month,
+          onPrevious: () => setState(() => _month = DateTime(_month.year, _month.month - 1)),
+          onNext: () => setState(() => _month = DateTime(_month.year, _month.month + 1)),
+          onToday: () => setState(() {
+            final now = DateTime.now();
+            _month = DateTime(now.year, now.month);
+            _picked = todayKey();
+          }),
+        ),
+        const _WeekdayHeader(),
+        _MonthGrid(
+          month: _month,
+          marks: marks,
+          selected: _selected,
+          onSelect: (date) => setState(() => _picked = date),
+        ),
+        const SizedBox(height: 8),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  '${monthDayLabel(_selected)} · ${weekdayLabelOf(_selected)}'
+                  '${dayEvents.isEmpty ? '' : ' · ${dayEvents.length} 条'}',
+                  style: theme.textTheme.labelLarge,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (dayEvents.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Text('这一天没有事件', style: theme.textTheme.bodySmall),
+          )
+        else
+          for (final event in dayEvents)
+            _EventTile(event: event, game: games[event.gameId], state: widget.state),
+      ],
     );
   }
 }
 
-/// 日期 → 这一天各条事件的标记色（**一条事件一段弧**）。
-Map<String, List<Color>> marksByDate(List<GameEvent> events, Map<String, Game> games) {
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({required this.day});
+
+  final String day;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isToday = day == todayKey();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      child: Row(
+        children: [
+          Text(
+            '${monthDayLabel(day)} · ${weekdayLabelOf(day)}',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: isToday ? theme.colorScheme.primary : null,
+            ),
+          ),
+          if (isToday) ...[
+            const SizedBox(width: 6),
+            Text('今天', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EventTile extends StatelessWidget {
+  const _EventTile({required this.event, required this.game, required this.state});
+
+  final GameEvent event;
+  final Game? game;
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        EventRow(
+          event: event,
+          game: game,
+          accent: game == null ? null : state.gameAccentOf(game!),
+          showEnd: state.showEndTime,
+          onTap: () => showDetailSheet(context, state, event),
+        ),
+        const Divider(height: 1, indent: 16, endIndent: 16),
+      ],
+    );
+  }
+}
+
+/// 已过期条目默认折叠，避免把“接下来”冲掉
+class _ExpiredSection extends StatefulWidget {
+  const _ExpiredSection({required this.events, required this.games, required this.state});
+
+  final List<GameEvent> events;
+  final Map<String, Game> games;
+  final AppState state;
+
+  @override
+  State<_ExpiredSection> createState() => _ExpiredSectionState();
+}
+
+class _ExpiredSectionState extends State<_ExpiredSection> {
+  bool open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        InkWell(
+          onTap: () => setState(() => open = !open),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                Text('已过期 ${widget.events.length} 条', style: theme.textTheme.labelLarge),
+                const Spacer(),
+                Icon(open ? Icons.expand_less : Icons.expand_more, size: 20),
+              ],
+            ),
+          ),
+        ),
+        if (open)
+          for (final event in widget.events)
+            _EventTile(
+              event: event,
+              game: widget.games[event.gameId],
+              state: widget.state,
+            ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------- 月份网格
+
+Map<String, List<Color>> marksByDate(
+  List<GameEvent> events,
+  Map<String, Game> games,
+  AppState state,
+) {
   final marks = <String, List<Color>>{};
   for (final event in events) {
     final day = dayPartOf(event.due);
-    if (day.isEmpty) continue;
-    marks.putIfAbsent(day, () => <Color>[]).add(games[event.gameId]?.accent ?? const Color(0xFF8A8A8A));
+    final game = games[event.gameId];
+    final color = game == null ? const Color(0xFF8A8A8A) : state.gameAccentOf(game);
+    marks.putIfAbsent(day, () => <Color>[]).add(color);
+    if (marks[day]!.length > 3) {
+      marks[day] = marks[day]!.take(3).toList();
+    }
   }
   return marks;
 }
@@ -144,11 +290,7 @@ class _MonthBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
       child: Row(
         children: <Widget>[
-          IconButton(
-            tooltip: '上个月',
-            icon: const Icon(Icons.chevron_left),
-            onPressed: onPrevious,
-          ),
+          IconButton(tooltip: '上个月', icon: const Icon(Icons.chevron_left), onPressed: onPrevious),
           Expanded(
             child: Text(
               '${month.year} 年 ${month.month} 月',
@@ -157,11 +299,7 @@ class _MonthBar extends StatelessWidget {
             ),
           ),
           TextButton(onPressed: onToday, child: const Text('今天')),
-          IconButton(
-            tooltip: '下个月',
-            icon: const Icon(Icons.chevron_right),
-            onPressed: onNext,
-          ),
+          IconButton(tooltip: '下个月', icon: const Icon(Icons.chevron_right), onPressed: onNext),
         ],
       ),
     );
@@ -204,7 +342,6 @@ class _MonthGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final first = DateTime(month.year, month.month, 1);
-    // 周一 = 0（DateTime.monday == 1）
     final leading = (first.weekday - DateTime.monday) % 7;
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
     final today = todayKey();
@@ -273,70 +410,6 @@ class _DayCell extends StatelessWidget {
                 color: isToday ? theme.colorScheme.primary : null,
                 fontWeight: isToday ? FontWeight.w600 : null,
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 日历里的标签筛选条：与游戏筛选并行，可多选
-class _TagBar extends StatelessWidget {
-  const _TagBar({required this.state});
-
-  final AppState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          _chip(context, label: '全部', selected: state.selectedTags.isEmpty, onTap: state.clearTags),
-          for (final tag in kTagGroups.keys)
-            _chip(
-              context,
-              label: tag,
-              selected: state.selectedTags.contains(tag),
-              onTap: () => state.toggleTag(tag),
-            ),
-          if (state.selectedGames.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 4, top: 12, bottom: 12),
-              child: Text('· 已按游戏过滤', style: theme.textTheme.labelSmall),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _chip(
-    BuildContext context, {
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(right: 8, top: 6, bottom: 6),
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: selected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ),

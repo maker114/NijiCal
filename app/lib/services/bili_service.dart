@@ -31,6 +31,14 @@ class BiliService {
     return 'not-login';
   }
 
+  /// 官号头像地址（来自 card 接口）
+  static Future<String?> faceOf(WebViewController controller, String mid) async {
+    final json = await _getJson(controller, '$_api/x/web-interface/card?mid=$mid');
+    final data = json?['data'];
+    final card = data is Map ? data['card'] : null;
+    if (card is Map) return card['face'] as String?;
+    return null;
+  }
   /// 当前登录的账号名（用来在刷新界面上显示“用的是谁的号”）
   static Future<String?> accountName(WebViewController controller) async {
     final json = await _getJson(controller, '$_api/x/web-interface/nav');
