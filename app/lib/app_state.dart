@@ -100,8 +100,12 @@ class AppState extends ChangeNotifier {
         ? liveEvents
         : liveEvents.where((e) => e.gameId != onlyGame).toList();
     final merged = mergeEvents(base, events, now);
+    // 全量刷新时不留旧事件（官方删掉的动态不该留在日历里）；
+    // 单刷只保留「其它游戏」的条目。
     final freshIds = events.map((e) => e.id).toSet();
-    final kept = base.where((e) => !freshIds.contains(e.id));
+    final kept = onlyGame == null
+        ? const <GameEvent>[]
+        : base.where((e) => !freshIds.contains(e.id));
 
     liveEvents = [...merged.events, ...kept];
     liveFetchedAt = now;
@@ -167,6 +171,11 @@ class AppState extends ChangeNotifier {
     list.sort((a, b) => a.due.compareTo(b.due));
     return list;
   }
+
+  /// 某款游戏、且符合当前「显示截止事件」开关的日程
+  List<GameEvent> visibleEventsOf(String gameId) => eventsOf(gameId)
+      .where((e) => showDeadlineEvents || !isDeadlineEvent(e))
+      .toList();
 
   List<GameEvent> eventsOf(String gameId) {
     final list = [

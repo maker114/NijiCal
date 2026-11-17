@@ -52,7 +52,7 @@ class _GameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = state.gameAccentOf(game);
-    final events = state.eventsOf(game.id);
+    final events = state.visibleEventsOf(game.id);
     final upcoming = events.where((e) => !e.due.isBefore(DateTime.now())).toList();
     final next = upcoming.isEmpty ? null : upcoming.first;
     final bound = state.bindings[game.id];
