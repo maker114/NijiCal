@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../services/prefs.dart';
 
+import 'auto_refresh_page.dart';
 import 'llm_settings_page.dart';
 import 'settings_pages.dart';
 
@@ -58,6 +59,17 @@ class SubscribeScreen extends StatelessWidget {
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => BiliAccountPage(state: state, onReschedule: onReschedule),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  SettingRow(
+                    icon: Icons.schedule,
+                    title: '自动刷新',
+                    subtitle: '每天定时拉取，默认 12:30 / 19:30',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AutoRefreshPage(onChanged: onReschedule),
                       ),
                     ),
                   ),

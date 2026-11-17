@@ -6,6 +6,7 @@ import 'screens/calendar_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/bili_pages.dart';
 import 'screens/subscribe_screen.dart';
+import 'services/auto_refresh.dart';
 import 'services/avatar_store.dart';
 import 'services/reminder_service.dart';
 import 'sheets.dart';
@@ -24,14 +25,23 @@ class NijiCalApp extends StatefulWidget {
   State<NijiCalApp> createState() => _NijiCalAppState();
 }
 
-class _NijiCalAppState extends State<NijiCalApp> {
+class _NijiCalAppState extends State<NijiCalApp> with WidgetsBindingObserver {
   final state = AppState();
   final themeController = ThemeController();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _boot();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // 后台定时任务可能已经写过数据，回到前台重读一次
+      this.state.restore().then((_) => _reschedule()).catchError((_) {});
+    }
   }
 
   @override
@@ -52,6 +62,11 @@ class _NijiCalAppState extends State<NijiCalApp> {
       await AvatarStore.load();
       await state.loadGames();
       await state.loadPredictions();
+      await AutoRefresh.init();
+      AutoRefresh.startForegroundWatch(() async {
+        await state.restore();
+        await _reschedule();
+      });
     } catch (_) {}
     await state.load();
     try {

@@ -193,4 +193,38 @@ abstract class Prefs {
         for (final e in value.entries) e.key: e.value.toJson(),
       }),
     );
+  }  // 自动刷新：开关、每天的时间点列表、上次跑过的时段
+  static const _autoEnabledKey = 'nijical.auto.enabled';
+  static const _autoTimesKey = 'nijical.auto.times';
+  static const _autoLastKey = 'nijical.auto.lastSlot';
+
+  static Future<bool> loadAutoEnabled() async {
+    final sp = await SharedPreferences.getInstance();
+    return sp.getBool(_autoEnabledKey) ?? false;
+  }
+
+  static Future<void> saveAutoEnabled(bool value) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setBool(_autoEnabledKey, value);
+  }
+
+  static Future<List<String>> loadAutoTimes() async {
+    final sp = await SharedPreferences.getInstance();
+    final list = sp.getStringList(_autoTimesKey);
+    return (list == null || list.isEmpty) ? const ['12:30', '19:30'] : list;
+  }
+
+  static Future<void> saveAutoTimes(List<String> times) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setStringList(_autoTimesKey, times);
+  }
+
+  static Future<String?> loadAutoLastSlot() async {
+    final sp = await SharedPreferences.getInstance();
+    return sp.getString(_autoLastKey);
+  }
+
+  static Future<void> saveAutoLastSlot(String slot) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_autoLastKey, slot);
   }}
