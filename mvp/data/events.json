@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "data_mode": "live",
+    "sample_notice": "",
+    "generated_by": "tools/build.py",
+    "timezone": "Asia/Shanghai",
+    "note": "事件全部来自 B 站动态经大模型规范化；官网采集通道已移除（2026-11-17）。"
+  },
+  "events": []
+}

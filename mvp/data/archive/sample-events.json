@@ -1,0 +1,457 @@
+{
+  "meta": {
+    "note": "这些是产品形态验证用的示例数据，不是真实公告。要恢复：把它们并回 data/events.json 并把 data_mode 改回 mixed。"
+  },
+  "events": [
+    {
+      "id": "e001",
+      "game_id": "genshin",
+      "type": "卡池结束",
+      "title": "「月之六」角色活动祈愿结束",
+      "start": null,
+      "end": "2026-11-17T17:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 96,
+      "summary": "祈愿结束后，对应角色获取途径关闭，保底进度不跨池继承。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e002",
+      "game_id": "genshin",
+      "type": "前瞻直播",
+      "title": "6.2 版本前瞻特别节目",
+      "start": "2026-11-19T20:00:00+08:00",
+      "end": null,
+      "status": "confirmed",
+      "confidence": 94,
+      "summary": "前瞻节目通常会公布下版本内容与三个兑换码，兑换码有较短有效期。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e003",
+      "game_id": "genshin",
+      "type": "版本更新",
+      "title": "6.2 版本更新维护",
+      "start": "2026-11-25T06:00:00+08:00",
+      "end": "2026-11-25T11:00:00+08:00",
+      "status": "confirmed",
+      "confidence": 92,
+      "summary": "更新维护期间无法登录，维护时长可能延长，补偿以游戏内邮件为准。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e004",
+      "game_id": "genshin",
+      "type": "活动结束",
+      "title": "「千星奇域」限时活动结束",
+      "start": null,
+      "end": "2026-11-24T03:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 93,
+      "summary": "活动结束后商店关闭，未兑换的活动代币将失效。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e005",
+      "game_id": "starrail",
+      "type": "卡池结束",
+      "title": "3.8 下半 角色活动跃迁结束",
+      "start": null,
+      "end": "2026-11-18T14:59:00+08:00",
+      "status": "changed",
+      "confidence": 95,
+      "summary": "官方公告已调整结束时间，原定 11 月 17 日 14:59。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": [
+        {
+          "field": "end",
+          "from": "2026-11-17T14:59:00+08:00",
+          "to": "2026-11-18T14:59:00+08:00",
+          "changed_at": "2026-11-15T18:20:00+08:00",
+          "reason": "官方延期公告"
+        }
+      ]
+    },
+    {
+      "id": "e006",
+      "game_id": "starrail",
+      "type": "兑换码截止",
+      "title": "3.8 前瞻直播兑换码截止",
+      "start": null,
+      "end": "2026-11-16T23:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 97,
+      "summary": "三个前瞻兑换码于今晚 24:00 失效，过期不可补领。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e007",
+      "game_id": "starrail",
+      "type": "版本更新",
+      "title": "4.0 版本更新维护",
+      "start": "2026-12-02T06:00:00+08:00",
+      "end": "2026-12-02T11:00:00+08:00",
+      "status": "tentative",
+      "confidence": 62,
+      "summary": "官方仅给出“12 月上旬”的模糊表述，具体日期待公告确认。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e008",
+      "game_id": "zzz",
+      "type": "活动开始",
+      "title": "「零号空洞·特别行动」开启",
+      "start": "2026-11-20T11:00:00+08:00",
+      "end": null,
+      "status": "confirmed",
+      "confidence": 90,
+      "summary": "版本更新后开启，首日进入可领取额外奖励。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e009",
+      "game_id": "zzz",
+      "type": "补偿领取截止",
+      "title": "异常补偿领取截止",
+      "start": null,
+      "end": "2026-11-19T23:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 91,
+      "summary": "补偿通过游戏内邮件发放，逾期未领取自动失效。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e010",
+      "game_id": "arknights",
+      "type": "活动结束",
+      "title": "「孤星」复刻活动结束",
+      "start": null,
+      "end": "2026-11-21T03:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 94,
+      "summary": "关卡关闭，活动商店同步下架。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e011",
+      "game_id": "arknights",
+      "type": "卡池结束",
+      "title": "限定寻访「孤星」结束",
+      "start": null,
+      "end": "2026-11-21T03:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 94,
+      "summary": "限定干员错过本期后需等待复刻。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e012",
+      "game_id": "wuthering",
+      "type": "兑换码截止",
+      "title": "2.7 版本前瞻兑换码截止",
+      "start": null,
+      "end": "2026-11-17T23:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 95,
+      "summary": "前瞻直播发放的兑换码即将失效。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e013",
+      "game_id": "wuthering",
+      "type": "版本更新",
+      "title": "2.7 版本更新",
+      "start": "2026-11-19T11:00:00+08:00",
+      "end": null,
+      "status": "confirmed",
+      "confidence": 93,
+      "summary": "更新后开放新角色与主线章节。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e014",
+      "game_id": "pgr",
+      "type": "活动开始",
+      "title": "「烬海异途」版本活动开启",
+      "start": "2026-11-20T11:00:00+08:00",
+      "end": null,
+      "status": "confirmed",
+      "confidence": 90,
+      "summary": "版本活动首周有额外的积分加成。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e015",
+      "game_id": "fgo",
+      "type": "停服维护",
+      "title": "定期维护",
+      "start": "2026-11-18T14:00:00+08:00",
+      "end": "2026-11-18T19:00:00+08:00",
+      "status": "confirmed",
+      "confidence": 88,
+      "summary": "维护期间无法登录，维护时长以实际开服时间为准。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e016",
+      "game_id": "fgo",
+      "type": "卡池结束",
+      "title": "「迦勒底·万圣」限定卡池结束",
+      "start": null,
+      "end": "2026-11-22T13:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 92,
+      "summary": "限定从者卡池关闭，后续复刻时间未定。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e017",
+      "game_id": "azur",
+      "type": "活动结束",
+      "title": "「碧海光粼」活动结束",
+      "start": null,
+      "end": "2026-11-23T23:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 91,
+      "summary": "活动关卡与商店同时关闭。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e018",
+      "game_id": "bluearchive",
+      "type": "活动结束",
+      "title": "「千年峰会」活动结束",
+      "start": null,
+      "end": "2026-11-19T03:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 93,
+      "summary": "活动结束后无法再获取活动点数。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e019",
+      "game_id": "snowbreak",
+      "type": "活动结束",
+      "title": "「雪境危途」活动结束",
+      "start": null,
+      "end": "2026-11-25T04:00:00+08:00",
+      "status": "confirmed",
+      "confidence": 90,
+      "summary": "活动兑换商店同步关闭。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e020",
+      "game_id": "nikke",
+      "type": "兑换码截止",
+      "title": "周年庆兑换码截止",
+      "start": null,
+      "end": "2026-11-17T11:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 94,
+      "summary": "周年庆直播兑换码即将失效。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e021",
+      "game_id": "deepspace",
+      "type": "卡池结束",
+      "title": "「星间漫游」思念卡池结束",
+      "start": null,
+      "end": "2026-11-20T04:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 92,
+      "summary": "限定思念卡池关闭，保底进度规则以官方说明为准。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e022",
+      "game_id": "r1999",
+      "type": "版本更新",
+      "title": "2.8 版本更新",
+      "start": "2026-11-27T11:00:00+08:00",
+      "end": null,
+      "status": "confirmed",
+      "confidence": 91,
+      "summary": "版本更新后开启新主线与限时活动。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e023",
+      "game_id": "hi3",
+      "type": "版本更新",
+      "title": "7.9 版本更新维护",
+      "start": "2026-11-20T06:00:00+08:00",
+      "end": "2026-11-20T11:00:00+08:00",
+      "status": "confirmed",
+      "confidence": 89,
+      "summary": "维护期间无法登录，开服时间可能顺延。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e024",
+      "game_id": "infinity",
+      "type": "活动结束",
+      "title": "「暖暖的旅行」活动结束",
+      "start": null,
+      "end": "2026-11-28T23:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 88,
+      "summary": "活动服装与道具停止兑换。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e025",
+      "game_id": "starrail",
+      "type": "卡池开始",
+      "title": "3.8 下半 角色活动跃迁开启",
+      "start": "2026-11-18T15:00:00+08:00",
+      "end": null,
+      "status": "confirmed",
+      "confidence": 94,
+      "summary": "下半卡池开启，与上半卡池不共享保底。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    },
+    {
+      "id": "e026",
+      "game_id": "genshin",
+      "type": "活动结束",
+      "title": "「幽夜默示录」活动结束",
+      "start": null,
+      "end": "2026-11-15T03:59:00+08:00",
+      "status": "confirmed",
+      "confidence": 95,
+      "summary": "活动已于昨日结束，保留用于验证“已过期”状态展示。",
+      "fetched_at": "2026-11-16T21:40:00+08:00",
+      "source": {
+        "name": "示例数据（非官方）",
+        "url": null
+      },
+      "revisions": []
+    }
+  ]
+}

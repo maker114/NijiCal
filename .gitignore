@@ -1,0 +1,24 @@
+# 依赖与构建产物
+**/.dart_tool/
+**/build/
+**/.flutter-plugins*
+**/node_modules/
+
+# B 站凭据：绝不入仓
+mvp/secrets/bili.json
+
+# 生成物与工作文件
+mvp/site/
+mvp/data/candidates.json
+app/flutter_*.log
+
+# 本地绑定配置（游戏 → UID），按需保留
+mvp/data/accounts.json
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 临时文件
+*.log
+*.tmp
