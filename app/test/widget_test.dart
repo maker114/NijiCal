@@ -5,6 +5,7 @@ import 'package:nijical/format.dart';
 import 'package:nijical/main.dart';
 import 'package:nijical/model.dart';
 import 'package:nijical/services/event_diff.dart';
+import 'package:nijical/services/uid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 GameEvent _ev({
@@ -208,5 +209,22 @@ void main() {
 
       state.setShowDeadlineEvents(true);
       expect(state.reminderScope.length, 2);
+    });
+  });
+  group('UID 归一化', () {
+    test('去掉 UID 前缀与冒号', () {
+      expect(normalizeUid('UID:123456'), '123456');
+      expect(normalizeUid('uid：123456'), '123456');
+      expect(normalizeUid('UID : 123456'), '123456');
+    });
+
+    test('从空间链接里取数字', () {
+      expect(normalizeUid('https://space.bilibili.com/123456?spm=333.999'), '123456');
+      expect(normalizeUid('space.bilibili.com/123456/'), '123456');
+    });
+
+    test('纯数字与空白照常处理', () {
+      expect(normalizeUid('  123456  '), '123456');
+      expect(normalizeUid('abc'), 'abc');
     });
   });}

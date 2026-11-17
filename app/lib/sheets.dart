@@ -8,6 +8,7 @@ import 'app_state.dart';
 import 'services/avatar_store.dart';
 import 'services/bili_service.dart';
 import 'services/logo_color.dart';
+import 'services/uid.dart';
 import 'format.dart';
 import 'model.dart';
 import 'services/ics_service.dart';
@@ -380,8 +381,8 @@ Future<void> showBindSheet(BuildContext context, AppState state, Game game) {
             borderRadius: BorderRadius.circular(AppShapes.nestedRadius),
           ),
           child: Text(
-            '说明：绑定只记录你要追哪个号，应用不会联网读取。'
-            '当前的数据来自官方公告页，在电脑端跑 collect.py 生成后打进安装包。',
+            '说明：绑定只决定刷新时去拉哪个号。'
+            'UID 可以粘贴「UID:123456」或空间链接，会自动取出数字。',
             style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onTertiaryContainer),
           ),
         ),
@@ -416,17 +417,17 @@ Future<void> showBindSheet(BuildContext context, AppState state, Game game) {
             Expanded(
               child: FilledButton(
                 onPressed: () {
-                  final match = RegExp(r'\d{3,}').firstMatch(controller.text.trim());
-                  if (match == null) {
+                  final uid = normalizeUid(controller.text);
+                  if (!RegExp(r'^\d{3,}$').hasMatch(uid)) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('没识别出 UID，请填数字或空间链接')),
                     );
                     return;
                   }
-                  state.bind(game.id, match.group(0)!);
+                  state.bind(game.id, uid);
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('已绑定 UID ${match.group(0)}')),
+                    SnackBar(content: Text('已绑定 UID $uid')),
                   );
                 },
                 child: const Text('保存'),
@@ -498,8 +499,16 @@ class _AddGameSheetState extends State<_AddGameSheet> {
 
   void _onUidChanged(String value) {
     _debounce?.cancel();
+    final normalized = normalizeUid(value);
+    if (normalized != value && normalized.isNotEmpty) {
+      // 粘贴进来的 “UID:123456” 或空间链接，直接换成纯数字
+      uidCtrl.value = TextEditingValue(
+        text: normalized,
+        selection: TextSelection.collapsed(offset: normalized.length),
+      );
+    }
     setState(() => error = null);
-    final mid = value.trim();
+    final mid = normalized;
     if (mid.length < 3) {
       setState(() {
         fetchedName = null;
@@ -551,7 +560,7 @@ class _AddGameSheetState extends State<_AddGameSheet> {
     final id = widget.state.addGame(
       name: name,
       accent: (accent ?? accentPresets.first.seed).toARGB32(),
-      uid: uidCtrl.text.trim(),
+      uid: normalizeUid(uidCtrl.text),
     );
     if (faceBytes != null) await AvatarStore.saveBytes(id, faceBytes!);
     if (!mounted) return;

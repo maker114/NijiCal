@@ -4,6 +4,7 @@ import 'format.dart';
 import 'model.dart';
 import 'services/event_diff.dart';
 import 'services/prefs.dart';
+import 'services/uid.dart';
 
 enum RangeFilter {
   today('今天'),
@@ -217,7 +218,8 @@ class AppState extends ChangeNotifier {
       short: (short == null || short.trim().isEmpty) ? name.trim() : short.trim(),
       accent: Color(accent),
     ));
-    if (uid != null && uid.trim().isNotEmpty) bindings[id] = uid.trim();
+    final cleanUid = uid == null ? '' : normalizeUid(uid);
+    if (cleanUid.isNotEmpty) bindings[id] = cleanUid;
     Prefs.saveCustomGames(customGames);
     Prefs.saveBindings(bindings);
     notifyListeners();
@@ -314,7 +316,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
   void bind(String gameId, String uid) {
-    bindings[gameId] = uid;
+    bindings[gameId] = normalizeUid(uid);
     Prefs.saveBindings(bindings);
     notifyListeners();
   }
