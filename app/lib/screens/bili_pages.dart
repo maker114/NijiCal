@@ -99,6 +99,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
   int added = 0;
   final List<String> log = [];
   final List<String> failures = [];
+  final Map<String, _GameStat> stats = {};
   String modelLabel = '';
   String? account;
   int fetched = 0;
@@ -125,19 +126,35 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
     });
   }
 
-  /// 预筛：正文里既要有事件关键词，也要有可解析的时间线索。
-  /// 不加这层的话，一个账号 24 条动态会全部送进模型，又慢又贵。
+  static const _eventKeywords = [
+    '活动', '维护', '版本', '兑换码', '卡池', '寻访', '祈愿', '跃迁',
+    '补偿', '前瞻', '截止', '结束', '开启', '开放', '预约', '发放',
+  ];
+
+  static final RegExp _timeRe = RegExp(
+    r'\d{1,2}\s*月\s*\d{1,2}\s*[日号]'
+    r'|\d{1,2}\s*[./]\s*\d{1,2}'
+    r'|\d{1,2}\s*[:：]\s*\d{2}'
+    r'|本周|下周|今日|明天|版本更新后|维护后',
+  );
+
+  /// 有事件关键词 + 有时间线索：最可能是公告
   static bool _looksLikeEvent(String text) {
     if (text.length < 10) return false;
-    const keywords = [
-      '活动', '维护', '版本', '兑换码', '卡池', '寻访', '祈愿', '跃迁',
-      '补偿', '前瞻', '截止', '结束', '开启', '开放', '预约',
-    ];
-    if (!keywords.any(text.contains)) return false;
-    final timeRe = RegExp(
-      r'\d{1,2}\s*月\s*\d{1,2}\s*日|\d{1,2}\s*[:：]\s*\d{2}|本周|下周|今日|明天|版本更新后|维护后',
-    );
-    return timeRe.hasMatch(text);
+    return _eventKeywords.any(text.contains) && _timeRe.hasMatch(text);
+  }
+
+  /// 仅有时间线索（含日期/时刻/相对时间）：兜底池，用来补足名额
+  static bool _hasTimeSignal(String text) {
+    if (text.length < 10) return false;
+    return _timeRe.hasMatch(text);
+  }
+
+  /// 取一条动态的预筛等级：2 = 严格通过，1 = 只命中时间，0 = 不要
+  static int _prefilterRank(String text) {
+    if (_looksLikeEvent(text)) return 2;
+    if (_hasTimeSignal(text)) return 1;
+    return 0;
   }
 
   Future<void> _run() async {
@@ -165,7 +182,12 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       if (mounted) setState(() => account = name);
 
       final games = widget.state.gameMap;
-      final all = widget.state.bindings;
+      // 只刷游戏库里还存在的游戏：删掉的游戏若留下绑定，会白拉一遍，
+      // 统计数字也会和界面对不上。
+      final all = <String, String>{
+        for (final e in widget.state.bindings.entries)
+          if (games.containsKey(e.key)) e.key: e.value,
+      };
       final bindings = widget.onlyGameId == null
           ? all
           : {
@@ -179,7 +201,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       var rawFetched = 0;
       // 只按账号限流，不再设全局上限：以前 4 个号就能吃满 30 条，
       // 后加的游戏一条都没机会进入解析。
-      const perAccount = 6;
+      const perAccount = 10;
 
       var index = 0;
       for (final entry in bindings.entries) {
@@ -194,16 +216,30 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           final face = await BiliService.faceOf(controller, entry.value);
           if (face != null) await AvatarStore.download(entry.key, face);
 
-          // 预筛：同一账号只送“看得出是事件”的前 8 条，98 条全送模型又慢又贵
-          var picked = 0;
+          // 预筛分两级：先收「关键词 + 时间」的，再用「只有时间」的补足名额，
+          // 避免把没有关键词但确实带日期的公告漏掉。
+          final strict = <Map<String, dynamic>>[];
+          final loose = <Map<String, dynamic>>[];
           for (final item in list) {
-            if (picked >= perAccount) break;
             final text = BiliService.dynamicsText(item);
-            if (!_looksLikeEvent(text)) continue;
-            items.add({...item, '_game': entry.key, '_name': name});
-            picked++;
+            final rank = _prefilterRank(text);
+            if (rank == 2) {
+              strict.add({...item, '_game': entry.key, '_name': name});
+            } else if (rank == 1) {
+              loose.add({...item, '_game': entry.key, '_name': name});
+            }
           }
-          log.add('$name：${list.length} 条动态，$picked 条进入解析');
+          final taken = <Map<String, dynamic>>[
+            ...strict,
+            ...loose,
+          ].take(perAccount).toList();
+          items.addAll(taken);
+          stats[entry.key] = _GameStat(
+            raw: list.length,
+            strict: strict.length,
+            loose: loose.length,
+            taken: taken.length,
+          );
         } catch (e) {
           final reason = '$e'.split('\n').first;
           log.add('$name：拉取失败 $reason');
@@ -238,9 +274,11 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           fallbackGameId: gameId,
         );
         if (outcome.event == null) {
+          stats[gameId]?.failed += 1;
           failures.add('$gameName｜${outcome.error ?? '未知原因'}（${BiliService.idOf(item)}）');
           continue;
         }
+        stats[gameId]?.parsed += 1;
         final normalized = outcome.event!;
         final event = BiliService.fromNormalized(
           n: normalized,
@@ -320,10 +358,19 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           'stored=${stored.length} visible=$visible fetched=$fetched '
           'failed=${failures.length} games=${stored.map((e) => e.gameId).toSet()}');
 
+      for (final entry in stats.entries) {
+        final name = widget.state.gameMap[entry.key]?.name ?? entry.key;
+        final mine = widget.state.liveEvents.where((e) => e.gameId == entry.key).toList();
+        final hidden = mine.where(AppState.isDeadlineEvent).length;
+        log.add('$name：拉到 ${entry.value.raw} · 送解析 ${entry.value.taken} · '
+            '入库 ${mine.length}${hidden > 0 ? '（其中 $hidden 条截止类）' : ''} · '
+            '未通过 ${entry.value.failed}');
+      }
+
       final hiddenNote = stored.isNotEmpty && visible == 0
           ? '｜${stored.length} 条全是截止类事件，已被「显示截止事件」开关隐藏'
           : '';
-      _finish('完成：$added 条事件｜$fetched 条动态，${failures.length} 条未通过'
+      _finish('完成：$added 条事件｜送解析 $fetched 条（共拉 $rawFetched 条），${failures.length} 条未通过'
           '${changes.isEmpty ? '' : '｜改期 ${changes.length} 项'}$hiddenNote');
     } catch (e) {
       _finish('失败：${'$e'.split('\n').first}');
@@ -414,8 +461,21 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
                       Text(message, style: theme.textTheme.bodyMedium),
                       if (finished && log.isNotEmpty) ...[
                         const SizedBox(height: 8),
-                        for (final line in log.take(5))
-                          Text(line, style: theme.textTheme.labelSmall),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 150),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (final line in log)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 3),
+                                    child: Text(line, style: theme.textTheme.labelSmall),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                       if (failures.isNotEmpty) ...[
                         const SizedBox(height: 8),
@@ -474,4 +534,16 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       ),
     );
   }
+}
+
+/// 单个账号一轮刷新的漏斗数字
+class _GameStat {
+  _GameStat({required this.raw, required this.strict, required this.loose, required this.taken});
+
+  final int raw;
+  final int strict;
+  final int loose;
+  final int taken;
+  int parsed = 0;
+  int failed = 0;
 }
