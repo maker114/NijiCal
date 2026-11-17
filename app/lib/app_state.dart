@@ -108,7 +108,12 @@ class AppState extends ChangeNotifier {
         ? const <GameEvent>[]
         : base.where((e) => !freshIds.contains(e.id));
 
-    liveEvents = [...merged.events, ...kept];
+    // 游戏已不在库里的事件不再保留（删除游戏后残留的孤儿数据）
+    final known = gameMap;
+    liveEvents = [
+      ...merged.events,
+      ...kept,
+    ].where((e) => known.containsKey(e.gameId)).toList();
     liveFetchedAt = now;
     await Prefs.saveLiveEvents(liveEvents.map((e) => e.toJson()).toList());
     await Prefs.saveLiveFetchedAt(now);
