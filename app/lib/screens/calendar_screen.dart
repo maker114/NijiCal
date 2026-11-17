@@ -49,13 +49,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ..sort((a, b) => b.due.compareTo(a.due));
 
     if (events.isEmpty) {
+      final hiddenDeadlines = widget.state.allEvents.where(AppState.isDeadlineEvent).length;
       return ListView(
-        children: const [
-          SizedBox(height: 80),
+        children: [
+          const SizedBox(height: 80),
           EmptyState(
-            title: '还没有日程',
-            body: '绑定官号后，在订阅页从 B 站刷新一次，事件会落到这里。',
-            icon: Icons.event_note_outlined,
+            title: hiddenDeadlines > 0 ? '截止类事件已隐藏' : '还没有日程',
+            body: hiddenDeadlines > 0
+                ? '当前有 $hiddenDeadlines 条「（截止）」条目被开关隐藏，可在订阅页打开。'
+                : '绑定官号后，在订阅页从 B 站刷新一次，事件会落到这里。',
+            icon: hiddenDeadlines > 0 ? Icons.visibility_off_outlined : Icons.event_note_outlined,
           ),
         ],
       );
@@ -189,7 +192,7 @@ class _EventTile extends StatelessWidget {
           event: event,
           game: game,
           accent: game == null ? null : state.gameAccentOf(game!),
-          showEnd: state.showEndTime,
+
           onTap: () => showDetailSheet(context, state, event),
         ),
         const Divider(height: 1, indent: 16, endIndent: 16),

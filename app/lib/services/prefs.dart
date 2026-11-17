@@ -104,7 +104,7 @@ abstract class Prefs {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_accentsKey, jsonEncode(value));
   }  static const _calendarViewKey = 'nijical.calendarView';
-  static const _showEndKey = 'nijical.showEndTime';
+  static const _showDeadlineKey = 'nijical.showDeadlineEvents';
 
   static Future<bool> loadCalendarView() async {
     final sp = await SharedPreferences.getInstance();
@@ -116,13 +116,13 @@ abstract class Prefs {
     await sp.setBool(_calendarViewKey, value);
   }
 
-  static Future<bool> loadShowEndTime() async {
+  static Future<bool> loadShowDeadlineEvents() async {
     final sp = await SharedPreferences.getInstance();
-    return sp.getBool(_showEndKey) ?? false;
+    return sp.getBool(_showDeadlineKey) ?? false;
   }
 
-  static Future<void> saveShowEndTime(bool value) async {
+  static Future<void> saveShowDeadlineEvents(bool value) async {
     final sp = await SharedPreferences.getInstance();
-    await sp.setBool(_showEndKey, value);
+    await sp.setBool(_showDeadlineKey, value);
   }
 }

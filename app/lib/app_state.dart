@@ -40,7 +40,8 @@ class AppState extends ChangeNotifier {
   String search = '';
   bool remindersOn = false;
   bool calendarView = false;
-  bool showEndTime = false;
+  /// 是否显示「截止」类事件（活动结束 / 卡池结束 / 兑换码截止 / 补偿截止）
+  bool showDeadlineEvents = false;
   int scheduledCount = 0;
   final List<String> corrections = [];
 
@@ -54,7 +55,7 @@ class AppState extends ChangeNotifier {
       ..addAll(await Prefs.loadBindings());
     remindersOn = await Prefs.loadRemindersEnabled();
     calendarView = await Prefs.loadCalendarView();
-    showEndTime = await Prefs.loadShowEndTime();
+    showDeadlineEvents = await Prefs.loadShowDeadlineEvents();
     gameAccents
       ..clear()
       ..addAll(await Prefs.loadGameAccents());
@@ -140,8 +141,16 @@ class AppState extends ChangeNotifier {
     };
   }
 
+  /// 是否是「截止」类事件：类型以结束/截止结尾，或标题以（截止）收尾
+  static bool isDeadlineEvent(GameEvent e) =>
+      e.title.endsWith('（截止）') ||
+      const {'活动结束', '卡池结束', '兑换码截止', '补偿领取截止'}.contains(e.type);
+
   List<GameEvent> visibleEvents() {
-    final list = allEvents.where(_passes).toList();
+    final list = allEvents
+        .where(_passes)
+        .where((e) => showDeadlineEvents || !isDeadlineEvent(e))
+        .toList();
     list.sort((a, b) => a.due.compareTo(b.due));
     return list;
   }
@@ -246,9 +255,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setShowEndTime(bool value) {
-    showEndTime = value;
-    Prefs.saveShowEndTime(value);
+  void setShowDeadlineEvents(bool value) {
+    showDeadlineEvents = value;
+    Prefs.saveShowDeadlineEvents(value);
     notifyListeners();
   }
   void setReminders(bool value) {
