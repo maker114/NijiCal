@@ -125,7 +125,7 @@ class GameDetailPage extends StatelessWidget {
       listenable: state,
       builder: (context, _) {
         final accent = state.gameAccentOf(game);
-        final all = state.eventsOf(game.id);
+        final all = state.visibleEventsOf(game.id);
         final now = DateTime.now();
         final upcoming = all.where((e) => !e.due.isBefore(now)).toList();
         final expired = all.where((e) => e.due.isBefore(now)).toList();

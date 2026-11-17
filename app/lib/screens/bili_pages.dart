@@ -177,8 +177,9 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       }
       final items = <Map<String, dynamic>>[];
       var rawFetched = 0;
-      const perAccount = 8;
-      const totalCap = 30;
+      // 只按账号限流，不再设全局上限：以前 4 个号就能吃满 30 条，
+      // 后加的游戏一条都没机会进入解析。
+      const perAccount = 6;
 
       var index = 0;
       for (final entry in bindings.entries) {
@@ -196,7 +197,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           // 预筛：同一账号只送“看得出是事件”的前 8 条，98 条全送模型又慢又贵
           var picked = 0;
           for (final item in list) {
-            if (picked >= perAccount || items.length >= totalCap) break;
+            if (picked >= perAccount) break;
             final text = BiliService.dynamicsText(item);
             if (!_looksLikeEvent(text)) continue;
             items.add({...item, '_game': entry.key, '_name': name});
@@ -234,6 +235,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           author: BiliService.authorOf(item),
           publishedAt: BiliService.publishedAtOf(item),
           config: config,
+          fallbackGameId: gameId,
         );
         if (outcome.event == null) {
           failures.add('$gameName｜${outcome.error ?? '未知原因'}（${BiliService.idOf(item)}）');
@@ -421,13 +423,21 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
                           '未通过（${failures.length}）',
                           style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error),
                         ),
-                        for (final line in failures.take(3))
-                          Text(
-                            line,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.labelSmall,
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 180),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (final line in failures)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: Text(line, style: theme.textTheme.labelSmall),
+                                  ),
+                              ],
+                            ),
                           ),
+                        ),
                       ],
                       const SizedBox(height: 8),
                       Text(

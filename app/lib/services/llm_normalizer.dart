@@ -115,6 +115,7 @@ $text
     required String author,
     required DateTime publishedAt,
     required LlmConfig config,
+    String? fallbackGameId,
     Duration timeout = const Duration(seconds: 25),
   }) async {
     if (!config.ready) return const LlmOutcome(error: '未配置大模型 key');
@@ -149,7 +150,7 @@ $text
       final decoded = jsonDecode(body);
       final content = ((decoded['choices'] as List?)?.first as Map?)?['message']?['content'] as String?;
       if (content == null) return const LlmOutcome(error: '响应里没有 content');
-      return parse(content);
+      return parse(content, fallbackGameId: fallbackGameId);
     } catch (e) {
       return LlmOutcome(error: e.toString().split('\n').first);
     } finally {
@@ -158,7 +159,7 @@ $text
   }
 
   /// 解析并校验模型输出；不合格就返回错误，不猜
-  static LlmOutcome parse(String content) {
+  static LlmOutcome parse(String content, {String? fallbackGameId}) {
     Map<String, dynamic>? json;
     final openIdx = content.indexOf('{');
     final closeIdx = content.lastIndexOf('}');
@@ -174,7 +175,9 @@ $text
     if (json['is_event'] != true) return const LlmOutcome(error: '非事件');
 
     final gameName = '${json['game'] ?? ''}';
-    final gameId = gameIds[gameName];
+    // 归属以「这条动态是从哪个官号拉下来的」为准：
+    // 模型把星铁的公告说成明日方舟也不能改归属，所以 fallback 优先。
+    final gameId = fallbackGameId ?? gameIds[gameName];
     if (gameId == null) return LlmOutcome(error: '未知游戏：$gameName');
 
     final type = '${json['type'] ?? ''}';
