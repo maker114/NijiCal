@@ -6,6 +6,7 @@ import 'package:nijical/main.dart';
 import 'package:nijical/model.dart';
 import 'package:nijical/services/event_diff.dart';
 import 'package:nijical/services/uid.dart';
+import 'package:nijical/services/wbi.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 GameEvent _ev({
@@ -237,4 +238,9 @@ void main() {
     final filled = backfillRanges([start, end]);
     expect(filled.first.displayEnd, t2);
     expect(filled.first.start, t1);
+  });
+  test('MD5 与标准测试向量一致（WBI 签名依赖它）', () {
+    expect(Wbi.md5Of(''), 'd41d8cd98f00b204e9800998ecf8427e');
+    expect(Wbi.md5Of('abc'), '900150983cd24fb0d6963f7d28e17f72');
+    expect(Wbi.md5Of('message digest'), 'f96b697d7cb7938d525a2f31aaf161d0');
   });}

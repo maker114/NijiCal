@@ -234,6 +234,56 @@ $text
     return RegExp(r'^\d+\.\d+$').hasMatch(raw) ? raw : null;
   }
 
+  /// 把「前瞻总结视频」的文字材料压成要点。返回纯文本，失败返回 null。
+  static Future<String?> summarizeVideo({
+    required String material,
+    required String gameName,
+    required LlmConfig config,
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
+    if (!config.ready) return null;
+
+    final client = HttpClient()..connectionTimeout = timeout;
+    try {
+      final uri = Uri.parse('${config.baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions');
+      final request = await client.postUrl(uri).timeout(timeout);
+      request.headers
+        ..contentType = ContentType.json
+        ..set(HttpHeaders.authorizationHeader, 'Bearer ${config.apiKey}');
+      request.write(jsonEncode({
+        'model': config.model,
+        'temperature': 0.2,
+        'messages': [
+          {'role': 'system', 'content': '你是二游资讯编辑，只输出纯文本要点。'},
+          {
+            'role': 'user',
+            'content': '''这是《$gameName》一次前瞻直播的总结视频资料。请提取要点：
+"""
+$material
+"""
+
+要求：
+- 最多 6 条，每条一行，以「· 」开头；
+- 只写资料里明确提到的内容，尤其是版本号、新角色/卡池、活动与时间、福利或兑换码；
+- 没提到的不要编，不要客套话，不要总结“视频讲了什么”这类元信息；
+- 全程中文，单条不超过 40 字。''',
+          },
+        ],
+      }));
+
+      final response = await request.close().timeout(timeout);
+      final body = await response.transform(utf8.decoder).join().timeout(timeout);
+      if (response.statusCode != 200) return null;
+      final decoded = jsonDecode(body);
+      final content = ((decoded['choices'] as List?)?.first as Map?)?['message']?['content'] as String?;
+      final text = (content ?? '').trim();
+      return text.isEmpty ? null : text;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
   /// 设置页的连通性测试
   static Future<String> test(LlmConfig config) async {
     final outcome = await normalize(
