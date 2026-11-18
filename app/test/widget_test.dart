@@ -4,6 +4,7 @@ import 'package:nijical/app_state.dart';
 import 'package:nijical/format.dart';
 import 'package:nijical/main.dart';
 import 'package:nijical/model.dart';
+import 'package:nijical/services/update_service.dart';
 import 'package:nijical/services/event_diff.dart';
 import 'package:nijical/services/uid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -318,5 +319,30 @@ void main() {
         _ev(id: 'v1', title: '3.3 版本更新', start: last, status: EventStatus.confirmed, gameId: 'zzz'),
       ]);
       expect(state.reminderScope.where((e) => e.predicted), isEmpty);
+    });
+  });
+  group('更新检查', () {
+    test('解析仓库清单', () {
+      final info = UpdateInfo.fromJson({
+        'version': '2.15.0',
+        'versionCode': 69,
+        'apkUrl': 'https://example.com/a.apk',
+        'notes': '修复若干问题',
+      });
+      expect(info.version, '2.15.0');
+      expect(info.versionCode, 69);
+      expect(info.usable, isTrue);
+    });
+
+    test('清单缺字段时判为不可用', () {
+      final info = UpdateInfo.fromJson({'version': '', 'versionCode': 0});
+      expect(info.usable, isFalse);
+    });
+
+    test('版本号比较：只有更大才算有更新', () {
+      const current = 68;
+      expect(const UpdateInfo(version: '', versionCode: 68, apkUrl: '', notes: '').versionCode > current, isFalse);
+      expect(const UpdateInfo(version: '', versionCode: 69, apkUrl: '', notes: '').versionCode > current, isTrue);
+      expect(const UpdateInfo(version: '', versionCode: 67, apkUrl: '', notes: '').versionCode > current, isFalse);
     });
   });}
