@@ -47,6 +47,7 @@ class GameDetailPage extends StatelessWidget {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppShapes.sheetRadius)),
@@ -60,7 +61,10 @@ class GameDetailPage extends StatelessWidget {
           final setting = state.predictionOf(game.id);
           final base = state.predictionBaseOf(game.id);
           final nextUpdate = base?.add(Duration(days: setting.cycleDays));
-          return Padding(
+          return ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
+            child: SingleChildScrollView(
+              child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -211,6 +215,8 @@ class GameDetailPage extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
             ),
           );
         },

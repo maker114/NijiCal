@@ -1,6 +1,6 @@
 {
   "meta": {
-    "note": "游戏库。bili_uid 全部留空：未人工核实前不填任何 UID，避免编造官方号。绑定入口在页面里，用户填写后存本地。",
+    "note": "游戏库。默认为空：不让 App 随包携带任何游戏，全部由用户自己添加（填 B 站官号 UID）。这样也不会替用户预设「关注哪些游戏」。",
     "type_catalog": [
       "前瞻直播",
       "版本更新",
@@ -13,10 +13,5 @@
       "补偿领取截止"
     ]
   },
-  "games": [
-    { "id": "nte",        "name": "异环",              "short": "异环",   "accent": "#8a7fa8", "bili_uid": null, "official_site": "https://nte.perfectworld.com/cn/article/news/gamenews/index.html", "version_current": null, "version_next": null },
-    { "id": "arknights",  "name": "明日方舟",          "short": "方舟",   "accent": "#7fa38f", "bili_uid": null, "official_site": "https://ak.hypergryph.com/news", "version_current": null, "version_next": null },
-    { "id": "endfield",   "name": "明日方舟：终末地",   "short": "终末地", "accent": "#7f8fa8", "bili_uid": null, "official_site": "https://endfield.hypergryph.com/news", "version_current": null, "version_next": null },
-    { "id": "zzz",        "name": "绝区零",            "short": "绝区零", "accent": "#b58f6e", "bili_uid": null, "official_site": "https://zzz.mihoyo.com/news", "version_current": null, "version_next": null }
-  ]
+  "games": []
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
@@ -81,6 +82,8 @@ class AutoRefresh {
   static Timer? _timer;
 
   static void startForegroundWatch(Future<void> Function() onRan) {
+    // widget 测试里没有真实时钟，常驻计时器会让测试因「有未完成的 Timer」失败
+    if (Platform.environment.containsKey('FLUTTER_TEST')) return;
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(minutes: 1), (_) async {
       final slot = await dueSlot();

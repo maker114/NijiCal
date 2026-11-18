@@ -5,9 +5,9 @@
     "generated_by": "tools/build.py",
     "timezone": "Asia/Shanghai",
     "note": "事件全部来自 B 站动态经大模型规范化；官网采集通道已移除（2026-11-17）。",
-    "built_at": "2026-11-17T21:01:08+08:00",
+    "built_at": "2026-11-18T11:51:51+08:00",
     "event_count": 0,
-    "game_count": 4
+    "game_count": 0
   },
   "type_catalog": [
     "前瞻直播",
@@ -69,47 +69,6 @@
       -180
     ]
   },
-  "games": [
-    {
-      "id": "nte",
-      "name": "异环",
-      "short": "异环",
-      "accent": "#8a7fa8",
-      "bili_uid": null,
-      "official_site": "https://nte.perfectworld.com/cn/article/news/gamenews/index.html",
-      "version_current": null,
-      "version_next": null
-    },
-    {
-      "id": "arknights",
-      "name": "明日方舟",
-      "short": "方舟",
-      "accent": "#7fa38f",
-      "bili_uid": null,
-      "official_site": "https://ak.hypergryph.com/news",
-      "version_current": null,
-      "version_next": null
-    },
-    {
-      "id": "endfield",
-      "name": "明日方舟：终末地",
-      "short": "终末地",
-      "accent": "#7f8fa8",
-      "bili_uid": null,
-      "official_site": "https://endfield.hypergryph.com/news",
-      "version_current": null,
-      "version_next": null
-    },
-    {
-      "id": "zzz",
-      "name": "绝区零",
-      "short": "绝区零",
-      "accent": "#b58f6e",
-      "bili_uid": null,
-      "official_site": "https://zzz.mihoyo.com/news",
-      "version_current": null,
-      "version_next": null
-    }
-  ],
+  "games": [],
   "events": []
 }

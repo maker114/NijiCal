@@ -89,7 +89,7 @@ Future<void> showFilterSheet(BuildContext context, AppState state) {
                 for (final g in state.allGames)
                   ChoicePill(
                     label: g.short,
-                    dot: g.accent,
+                    dot: state.gameAccentOf(g),
                     selected: state.selectedGames.contains(g.id),
                     onTap: () => state.toggleGame(g.id),
                   ),
@@ -205,7 +205,11 @@ Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent eve
       children: [
         Row(
           children: [
-            Tag(text: game?.name ?? '', color: game?.accent, dot: game?.accent),
+            Tag(
+              text: game?.name ?? '',
+              color: game == null ? null : state.gameAccentOf(game),
+              dot: game == null ? null : state.gameAccentOf(game),
+            ),
             const SizedBox(width: 6),
             Tag(text: event.status.label),
             const SizedBox(width: 6),

@@ -128,8 +128,28 @@ class AppState extends ChangeNotifier {
       error = '$e';
     } finally {
       loading = false;
+      _migrateLegacyGames();
       notifyListeners();
     }
+  }
+
+  /// 安装包不再自带游戏；把老用户已经绑定/有日程的旧内置游戏转成自定义游戏，
+  /// 避免升级后「游戏和日程凭空消失」。
+  void _migrateLegacyGames() {
+    if (data == null) return;
+    final known = {for (final g in allGames) g.id};
+    final used = <String>{
+      ...bindings.keys,
+      ...liveEvents.map((e) => e.gameId),
+    };
+    var changed = false;
+    for (final legacy in kLegacyGames) {
+      if (known.contains(legacy.id)) continue;
+      if (!used.contains(legacy.id)) continue;
+      customGames.add(legacy);
+      changed = true;
+    }
+    if (changed) Prefs.saveCustomGames(customGames);
   }
 
   // ---------------------------------------------------------------- 筛选
@@ -538,3 +558,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 }
+
+/// 2.13.0 起安装包不再内置任何游戏。
+/// 但如果老用户已经绑过这四个号，升级后不该把他们的配置弄丢，
+/// 所以按这份定义把它们平移成「用户自己的游戏」。
+const kLegacyGames = <Game>[
+  Game(id: 'nte', name: '异环', short: '异环', accent: Color(0xFF8A7FA8)),
+  Game(id: 'arknights', name: '明日方舟', short: '方舟', accent: Color(0xFF7FA38F)),
+  Game(id: 'endfield', name: '明日方舟：终末地', short: '终末地', accent: Color(0xFF7F8FA8)),
+  Game(id: 'zzz', name: '绝区零', short: '绝区零', accent: Color(0xFFB58F6E)),
+];
