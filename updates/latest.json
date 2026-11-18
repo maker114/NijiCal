@@ -1,7 +1,7 @@
 {
   "version": "2.14.4",
   "versionCode": 72,
-  "apkUrl": "https://raw.githubusercontent.com/maker114/NijiCal/main/releases/NijiCal-2.14.4.apk",
+  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.14.4/NijiCal-2.14.4.apk",
   "publishedAt": "2026-11-18",
-  "notes": "底部「订阅」改名「设置」并换成齿轮图标；文案同步。"
+  "notes": "test: 启动测试改为轮询等待加载完成，修掉 CI 冷启动慢导致的误报"
 }
