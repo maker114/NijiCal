@@ -35,28 +35,37 @@ class UpdateService {
 
   static const _channel = MethodChannel('nijical/power');
 
-  /// 查询最新版本；全部地址都失败时返回 (null, 说明)
+  /// 查询最新版本。
+  ///
+  /// 各镜像/CDN 的缓存互相独立，先命中哪个就会拿到哪个的旧副本，
+  /// 所以这里**并发问所有源、取 versionCode 最大的那个**，
+  /// 避免「刚发版但某个镜像还返回旧版」。
   static Future<(UpdateInfo?, String?)> check() async {
-    final tried = <String>[];
-    for (final url in manifestSources) {
-      try {
-        final body = await _getText(url);
-        final json = jsonDecode(body);
-        if (json is! Map) {
-          tried.add('清单格式不对');
-          continue;
-        }
-        final info = UpdateInfo.fromJson(json.cast<String, dynamic>());
-        if (!info.usable) {
-          tried.add('清单缺字段');
-          continue;
-        }
-        return (info, null);
-      } catch (e) {
-        tried.add(_short(e));
+    final results = await Future.wait(manifestSources.map(_fetchOne));
+    final errors = <String>[];
+    UpdateInfo? best;
+    for (final r in results) {
+      if (r.$1 != null) {
+        if (best == null || r.$1!.versionCode > best.versionCode) best = r.$1;
+      } else if (r.$2 != null) {
+        errors.add(r.$2!);
       }
     }
-    return (null, '连不上更新服务器（已试 ${tried.length} 个地址：${tried.join('；')}）');
+    if (best != null) return (best, null);
+    return (null, '连不上更新服务器（${errors.length} 个地址都失败：${errors.join('；')}）');
+  }
+
+  static Future<(UpdateInfo?, String?)> _fetchOne(String url) async {
+    try {
+      final body = await _getText(url);
+      final json = jsonDecode(body);
+      if (json is! Map) return (null, '清单格式不对');
+      final info = UpdateInfo.fromJson(json.cast<String, dynamic>());
+      if (!info.usable) return (null, '清单缺字段');
+      return (info, null);
+    } catch (e) {
+      return (null, _short(e));
+    }
   }
 
   /// 下载 APK 到缓存目录，返回本地路径。会依次尝试直连与代理。
