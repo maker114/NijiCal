@@ -3,6 +3,11 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号与 `app/pubspec.yaml` 同源。
 分类只用：新增 / 变更 / 修复 / 移除。
 
+## [2.14.2] - 2026-11-18
+
+### 修复
+- 更新检查读的是 jsDelivr 的分支缓存，发版后几小时内仍返回旧版本（实测推送 45 秒后仍是上一版）。
+  调整清单源顺序：ghfast / ghproxy 直通 raw（实测实时）放前面，jsDelivr 降到兜底。
 ## [2.14.1] - 2026-11-18
 
 ### 修复

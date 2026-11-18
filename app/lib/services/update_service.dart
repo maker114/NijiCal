@@ -14,9 +14,13 @@ import 'prefs.dart';
 /// APK 走 ghfast / ghproxy 这类反向代理，逐级回退。
 class UpdateService {
   /// 清单地址：按可用性排序，取第一个成功返回的
+  /// 顺序有讲究：jsDelivr 会缓存分支内容几小时，发版后迟迟看不到新版，
+  /// 所以实时性要求高的放前面（ghfast / ghproxy 直通 raw，实测无缓存），
+  /// jsDelivr 只作兜底。
   static const manifestSources = <String>[
+    'https://ghfast.top/https://raw.githubusercontent.com/maker114/NijiCal/main/updates/latest.json',
+    'https://ghproxy.net/https://raw.githubusercontent.com/maker114/NijiCal/main/updates/latest.json',
     'https://cdn.jsdelivr.net/gh/maker114/NijiCal@main/updates/latest.json',
-    'https://fastly.jsdelivr.net/gh/maker114/NijiCal@main/updates/latest.json',
     'https://raw.githubusercontent.com/maker114/NijiCal/main/updates/latest.json',
   ];
 
