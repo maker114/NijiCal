@@ -13,6 +13,16 @@
 - 签名沿用现有 Android debug keystore，由仓库 secret `ANDROID_DEBUG_KEYSTORE_BASE64`
   传给 CI，保证 CI 产物与历史版本同一签名（应用内覆盖安装不失效）。
 - `releases/` 改为不入库（`2.14.3` 的包暂时保留，用于老版本用户升级）。
+## [2.14.4] - 2026-11-18
+
+### 变更
+- **底部第三个标签「订阅」改名为「设置」**，图标由铃铛换成齿轮（`settings_outlined` / `settings`）。
+  铃铛容易让人以为只是通知开关，而这一页实际是全部设置入口。
+- 界面文案里的「订阅页」统一改为「设置页」（日历空态、游戏详情提示等 4 处）。
+
+### 发布
+- 本版走云端流水线（`.github/workflows/release.yml`）：推 `v2.14.4` 标签 → CI 构建 →
+  发 GitHub Release → 回写 `updates/latest.json`，用于验证应用内手动更新的可行性。
 ## [2.14.3] - 2026-11-18
 
 ### 修复

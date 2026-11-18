@@ -131,7 +131,7 @@ class RootShell extends StatelessWidget {
   final Future<void> Function(BuildContext context) onEnableReminders;
   final Future<void> Function() onReschedule;
 
-  static const _titles = ['日历', '游戏库', '订阅'];
+  static const _titles = ['日历', '游戏库', '设置'];
 
   @override
   Widget build(BuildContext context) {
@@ -300,7 +300,7 @@ class _ShellBodyState extends State<_ShellBody> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: '日历'),
           NavigationDestination(icon: Icon(Icons.grid_view_outlined), selectedIcon: Icon(Icons.grid_view), label: '游戏库'),
-          NavigationDestination(icon: Icon(Icons.notifications_none), selectedIcon: Icon(Icons.notifications_active), label: '订阅'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: '设置'),
         ],
       ),
     );

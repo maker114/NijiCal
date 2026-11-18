@@ -25,7 +25,7 @@ class GameDetailPage extends StatelessWidget {
     final path = AvatarStore.pathOf(game.id);
     if (path == null) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('还没有这个号的头像，先在订阅页刷新一次')),
+        const SnackBar(content: Text('还没有这个号的头像，先在设置页刷新一次')),
       );
       return;
     }
@@ -102,7 +102,7 @@ class GameDetailPage extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   base == null
-                      ? '还没有这个号的版本记录，先去订阅页刷新一次，才有日期可以推算。'
+                      ? '还没有这个号的版本记录，先去设置页刷新一次，才有日期可以推算。'
                       : '以 ${md(base)} 的版本为基准；'
                           '预计下个版本 ${nextUpdate == null ? '—' : md(nextUpdate)}。',
                   style: theme.textTheme.labelSmall?.copyWith(
@@ -303,7 +303,7 @@ class GameDetailPage extends StatelessWidget {
                   padding: EdgeInsets.symmetric(vertical: 12),
                   child: EmptyState(
                     title: '还没有日程',
-                    body: '绑定官号后，在订阅页从 B 站刷新，事件会落到这里。',
+                    body: '绑定官号后，在设置页从 B 站刷新，事件会落到这里。',
                     icon: Icons.event_busy,
                   ),
                 )

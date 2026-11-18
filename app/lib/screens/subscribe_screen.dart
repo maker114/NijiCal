@@ -8,7 +8,7 @@ import 'update_page.dart';
 import 'llm_settings_page.dart';
 import 'settings_pages.dart';
 
-/// 订阅：按 GuideLine 的设置页做成二级菜单，每一项点进去才是具体设置。
+/// 设置：按 GuideLine 的设置页做成二级菜单，每一项点进去才是具体设置。
 class SubscribeScreen extends StatelessWidget {
   const SubscribeScreen({
     super.key,
