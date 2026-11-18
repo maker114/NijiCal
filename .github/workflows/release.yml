@@ -99,6 +99,15 @@ jobs:
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           "$BT/aapt2" dump badging "$APK" | grep -E "^package:"
 
+          # 签名证书必须是历史版本那一把，否则用户覆盖安装会被系统拒绝
+          EXPECTED="c58abe87b11d39bd258fc79d7550080f120dc7c064615f96366c949073165e32"
+          GOT=$("$BT/apksigner" verify --print-certs "$APK" | grep -oE 'SHA-256 digest: [0-9a-f]+' | head -1 | awk '{print $3}')
+          echo "签名证书 SHA-256: $GOT"
+          if [ "$GOT" != "$EXPECTED" ]; then
+            echo "::error::签名证书与历史版本不一致（期望 $EXPECTED，实际 $GOT）。请检查 secret ANDROID_DEBUG_KEYSTORE_BASE64。"
+            exit 1
+          fi
+
       - name: 发布 Release
         uses: softprops/action-gh-release@v2
         with:
