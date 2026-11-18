@@ -49,6 +49,28 @@ class _GameCard extends StatelessWidget {
   final Game game;
   final AppState state;
 
+  /// 长按直接给移除入口：设置抽屉里的按钮要翻到底才看得到
+  Future<void> _confirmRemove(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('移除 ${game.name}？'),
+        content: const Text('会同时清掉它的绑定与本地日程，重新添加后可以再刷新回来。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('移除'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) state.removeGame(game.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -64,6 +86,7 @@ class _GameCard extends StatelessWidget {
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => GameDetailPage(state: state, game: game)),
         ),
+        onLongPress: () => _confirmRemove(context),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
           child: Row(
