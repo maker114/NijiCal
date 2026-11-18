@@ -128,13 +128,26 @@ void main() {
 
   testWidgets('启动后能加载内置数据并渲染日历', (tester) async {
     await tester.pumpWidget(const NijiCalApp());
-    // 让 assets 读取与插件降级走完真实异步
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 600)));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+
+    // 等首帧加载完：CI 冷启动比本地慢，不能用固定延时（会停在骨架屏）
+    final empty = find.text('还没有日程');
+    for (var i = 0; i < 100 && empty.evaluate().isEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+    }
+
+    if (empty.evaluate().isEmpty) {
+      // 失败时把当前界面上的文字打出来，便于定位卡在哪个状态
+      final texts = find.byType(Text).evaluate()
+          .map((e) => (e.widget as Text).data)
+          .whereType<String>()
+          .toList();
+      fail('等待加载超时，当前文字：$texts');
+    }
 
     // 主界面默认是列表：没有事件时给空态提示，底部导航仍在
-    expect(find.text('还没有日程'), findsOneWidget);
+    expect(empty, findsOneWidget);
     expect(find.text('日历'), findsWidgets);
     expect(find.text('游戏库'), findsWidgets);
   });
