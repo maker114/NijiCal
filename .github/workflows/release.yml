@@ -69,7 +69,20 @@ jobs:
 
       - name: 单元测试
         working-directory: app
-        run: flutter test
+        run: |
+          set -o pipefail
+          flutter test 2>&1 | tee ../ci-test.log
+
+      # 失败时把日志推到 ci-logs 分支，方便维护者（本机读不到 Actions 日志时）排查
+      - name: 失败时上传日志
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B ci-logs
+          git add -f ci-test.log || true
+          git commit -m "ci: 失败日志 $(date -u +%FT%TZ)" || true
+          git push -f origin ci-logs || true
 
       - name: 构建 APK
         working-directory: app
