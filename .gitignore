@@ -20,6 +20,13 @@ mvp/data/accounts.json
 __pycache__/
 *.pyc
 
+# 内部协作规范（不进公开仓库）
+DSH通用规范.md
+
+# 临时截图与本地验证产物
+app/docs/_*.png
+dist/
+
 # 临时文件
 *.log
 *.tmp

@@ -3,6 +3,23 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号与 `app/pubspec.yaml` 同源。
 分类只用：新增 / 变更 / 修复 / 移除。
 
+## [2.14.0] - 2026-11-18
+
+### 新增
+- **应用内检查更新**（订阅 → 检查更新）：从仓库的 `updates/latest.json` 读最新版本，
+  比 `versionCode`；有新版本可一键下载并唤起系统安装器**覆盖安装**，数据不丢。
+  下载走 `FileProvider` + `ACTION_VIEW`，需要「安装未知应用」权限。
+- **开源**：仓库公开到 https://github.com/maker114/NijiCal ，补 MIT LICENSE，
+  README 重写（仓库结构、构建、发布与签名约定）。
+- `releases/` 存放发布用 APK，`updates/latest.json` 存放版本清单。
+
+### 变更
+- `kAppVersion` 旁新增 `kAppVersionCode`，与构建号保持一致，供更新比较使用。
+
+### 安全审查
+- 全仓库与 git 历史扫描：无 API key / cookie / 账号 UID / 本机路径泄漏；
+- `dist/`、`app/docs/_*.png`、`DSH通用规范.md`、`mvp/secrets/bili.json`、
+  `mvp/data/accounts.json`、`key.properties`、`*.jks` 均已忽略。
 ## [2.13.1] - 2026-11-18
 
 ### 修复

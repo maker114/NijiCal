@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../services/prefs.dart';
 
 import 'auto_refresh_page.dart';
+import 'update_page.dart';
 import 'llm_settings_page.dart';
 import 'settings_pages.dart';
 
@@ -107,6 +108,15 @@ class SubscribeScreen extends StatelessWidget {
                       state.setShowDeadlineEvents(!state.showDeadlineEvents);
                       await onReschedule();
                     },
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  SettingRow(
+                    icon: Icons.system_update_alt,
+                    title: '检查更新',
+                    subtitle: '从 GitHub 仓库拉取最新版本',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const UpdatePage()),
+                    ),
                   ),
                   const Divider(height: 1, indent: 56),
                   SettingRow(

@@ -227,4 +227,17 @@ abstract class Prefs {
   static Future<void> saveAutoLastSlot(String slot) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_autoLastKey, slot);
+  }
+  // 上次手动检查更新的时间（只用于界面显示）
+  static const _updateCheckedKey = 'nijical.update.checkedAt';
+
+  static Future<DateTime?> loadUpdateCheckedAt() async {
+    final sp = await SharedPreferences.getInstance();
+    final raw = sp.getString(_updateCheckedKey);
+    return raw == null ? null : DateTime.tryParse(raw);
+  }
+
+  static Future<void> saveUpdateCheckedAt(DateTime value) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_updateCheckedKey, value.toIso8601String());
   }}
