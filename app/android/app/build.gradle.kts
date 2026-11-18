@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -31,11 +33,30 @@ android {
         versionName = flutter.versionName
     }
 
+    // 有 key.properties（CI）就用它签名，没有就退回 debug 签名（本地开发）。
+    // 显式指定 storeFile，避免 AGP 在 CI 上因 ANDROID_SDK_HOME 不同而生成/使用另一份 debug keystore。
+    signingConfigs {
+        create("appRelease") {
+            val propsFile = rootProject.file("key.properties")
+            if (propsFile.exists()) {
+                val props = Properties()
+                propsFile.inputStream().use { props.load(it) }
+                storeFile = file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            val propsFile = rootProject.file("key.properties")
+            signingConfig = if (propsFile.exists()) {
+                signingConfigs.getByName("appRelease")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
