@@ -1,7 +1,7 @@
 {
-  "version": "2.15.0",
-  "versionCode": 72,
+  "version": "2.14.3",
+  "versionCode": 71,
   "apkUrl": "https://raw.githubusercontent.com/maker114/NijiCal/main/releases/NijiCal-2.14.3.apk",
   "publishedAt": "2026-11-18",
-  "notes": "【临时测试条目】验证下载与覆盖安装链路。"
+  "notes": "修复：并发查询所有镜像并取最高版本，避免命中旧缓存导致检测不到新版本；更新检查在国内网络下可用。"
 }
