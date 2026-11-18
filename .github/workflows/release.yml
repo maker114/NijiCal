@@ -36,6 +36,7 @@ jobs:
       - name: 安装 Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.47.5'
           channel: stable
           cache: true
 
@@ -52,12 +53,23 @@ jobs:
           mkdir -p "$HOME/.android"
           echo "$KEYSTORE_B64" | base64 -d > "$HOME/.android/debug.keystore"
 
-      - name: 依赖与测试
+      - name: 打印工具链版本
         working-directory: app
         run: |
-          flutter pub get
-          flutter analyze
-          flutter test
+          flutter --version
+          dart --version
+
+      - name: 拉依赖
+        working-directory: app
+        run: flutter pub get
+
+      - name: 静态检查
+        working-directory: app
+        run: flutter analyze
+
+      - name: 单元测试
+        working-directory: app
+        run: flutter test
 
       - name: 构建 APK
         working-directory: app
