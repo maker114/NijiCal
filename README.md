@@ -13,7 +13,7 @@
 | [`app/`](app/) | **Flutter 手机客户端**（产品本体）：数据本机、提醒本地、ICS 机内生成 |
 | [`mvp/`](mvp/) | 数据端与工具：`data/*.json` 是打包进 App 的种子数据，`tools/build.py` 校验并生成 `app/assets/data.json` |
 | [`updates/`](updates/) | `latest.json`：App 内「检查更新」读取的版本清单 |
-| [`releases/`](releases/) | 发布用的 APK（App 内更新从这里下载） |
+| [`.github/workflows/`](.github/workflows/) | 发版流水线：打 tag 自动构建并发布 Release |
 | [`CHANGELOG.md`](CHANGELOG.md) | 版本与改动记录（Keep a Changelog） |
 
 ## 数据从哪来
@@ -78,12 +78,29 @@ App 内「检查更新」读的是 [`updates/latest.json`](updates/latest.json)�
 }
 ```
 
-发布新版本时：
+发布走 **GitHub Actions**：推送 `v*` 标签即自动构建 APK、发 GitHub Release、
+并回写 `updates/latest.json`（不依赖本地能否访问 GitHub API，也不再往仓库里塞 54MB 的包）。
 
-1. `flutter build apk --release --build-name=X.Y.Z --build-number=N`；
-2. 把 APK 放到 `releases/NijiCal-X.Y.Z.apk`；
-3. 更新 `updates/latest.json` 的 `version` / `versionCode` / `apkUrl` / `notes`；
-4. 一起提交推送。
+```powershell
+tool/release.ps1 -Version 2.15.0 -Code 72 -Note "本次更新说明"
+```
+
+脚本会：改版本号（`app/pubspec.yaml` + `app/lib/version.dart`）→ 本地 `analyze` + `test`
+→ 提交 → 打 `v2.15.0` 标签 → 推送。之后 `.github/workflows/release.yml` 负责：
+构建 → 校验签名与版本 → 发布 Release（APK 作为 asset）→ 提交新的 `updates/latest.json`。
+
+**一次性配置（维护者）**
+
+签名必须与历史版本一致，否则应用内「覆盖安装」会被系统拒绝。工作流从仓库 secret
+读取 keystore：
+
+1. 取 `~/.android/debug.keystore` 的 base64：
+   `[Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:USERPROFILE\.android\debug.keystore"))`
+2. GitHub → Settings → Secrets and variables → Actions → New repository secret，
+   名称 **`ANDROID_DEBUG_KEYSTORE_BASE64`**，值为上面的字符串。
+
+工作流会把它还原到 `~/.android/debug.keystore` 再构建，因此 CI 产出的 APK 与历史版本
+**同一签名**。更换 keystore 会让老用户必须先卸载（数据会丢），务必沿用。
 
 **安装时的系统拦截**（国产 ROM 常见，App 无法绕过）：
 

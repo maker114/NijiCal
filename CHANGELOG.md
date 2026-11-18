@@ -3,6 +3,16 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号与 `app/pubspec.yaml` 同源。
 分类只用：新增 / 变更 / 修复 / 移除。
 
+## [2.14.4] - 2026-11-18
+
+### 变更
+- **发版迁到 GitHub Actions**：新增 `.github/workflows/release.yml`，推送 `v*` 标签即
+  自动构建 APK、发布 GitHub Release（APK 作为 Release asset），并回写 `updates/latest.json`。
+  这样既不依赖本地能否访问 GitHub API，也不再往仓库里提交 54MB 的安装包。
+- 新增 `tool/release.ps1`：一条命令完成「改版本号 → 本地 analyze/test → 提交 → 打标签 → 推送」。
+- 签名沿用现有 Android debug keystore，由仓库 secret `ANDROID_DEBUG_KEYSTORE_BASE64`
+  传给 CI，保证 CI 产物与历史版本同一签名（应用内覆盖安装不失效）。
+- `releases/` 改为不入库（`2.14.3` 的包暂时保留，用于老版本用户升级）。
 ## [2.14.3] - 2026-11-18
 
 ### 修复
