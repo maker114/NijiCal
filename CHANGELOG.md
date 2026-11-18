@@ -3,6 +3,14 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号与 `app/pubspec.yaml` 同源。
 分类只用：新增 / 变更 / 修复 / 移除。
 
+## [2.14.1] - 2026-11-18
+
+### 修复
+- **更新检查在国内网络下必然失败**：直连 `raw.githubusercontent.com` 在蜂窝网络下不可达
+  （真机实测 curl 返回 0）。改为多源回退：
+  - 清单：jsDelivr → fastly.jsDelivr → raw.githubusercontent（jsDelivr 实测 200）；
+  - APK：直连 → `ghfast.top` → `ghproxy.net`（ghfast 实测 206 且能取到 ZIP 头）。
+  全部失败时提示里带上每个地址的错误原因。
 ## [2.14.0] - 2026-11-18
 
 ### 新增

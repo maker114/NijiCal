@@ -1,7 +1,7 @@
 {
-  "version": "2.14.0",
-  "versionCode": 68,
-  "apkUrl": "https://raw.githubusercontent.com/maker114/NijiCal/main/releases/NijiCal-2.14.0.apk",
+  "version": "2.14.1",
+  "versionCode": 69,
+  "apkUrl": "https://raw.githubusercontent.com/maker114/NijiCal/main/releases/NijiCal-2.14.1.apk",
   "publishedAt": "2026-11-18",
-  "notes": "新增：设置里可检查更新，直接从仓库下载新版覆盖安装，数据不丢。"
+  "notes": "修复：更新检查在国内网络下连不上（清单走 jsDelivr，APK 走镜像回退）。"
 }
