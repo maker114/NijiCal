@@ -1,7 +1,7 @@
 {
-  "version": "2.14.1",
-  "versionCode": 69,
+  "version": "2.14.2",
+  "versionCode": 70,
   "apkUrl": "https://raw.githubusercontent.com/maker114/NijiCal/main/releases/NijiCal-2.14.1.apk",
   "publishedAt": "2026-11-18",
-  "notes": "修复：更新检查在国内网络下连不上（清单走 jsDelivr，APK 走镜像回退）。"
+  "notes": "【临时测试条目】用于验证下载与覆盖安装链路。"
 }
