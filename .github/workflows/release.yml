@@ -125,26 +125,27 @@ jobs:
           REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          set -o pipefail
+          set +e
           export NOTES="$(git log -1 --pretty=%s)"
+          set -x
           {
             python3 .github/scripts/update_manifest.py
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add updates/latest.json
             git commit -m "chore(release): 更新清单 $VER ($CODE) [skip ci]" || echo "清单无变化"
-            # 注意：checkout 在 tag 上是 detached HEAD，不能 git pull --rebase（会报
-            # "You are not currently on a branch"），只能 fetch 后 rebase 到 origin/main
+            # checkout 在 tag 上是 detached HEAD，不能 git pull --rebase，只能 fetch 后 rebase
             git fetch origin main
             git rebase origin/main
             git push origin HEAD:main
-          } 2>&1 | tee ../ci-manifest.log
+          } 2>&1 | tee ci-manifest.log
+          exit ${PIPESTATUS[0]}
 
       # 失败时把日志推到 ci-logs 分支（放在最后，前面任何一步失败都会跑到这里）
       - name: 失败时上传日志
         if: failure()
         run: |
-          echo "=== ci-manifest.log ===" && cat ../ci-manifest.log 2>/dev/null || true
+          echo "=== ci-manifest.log ===" && cat ci-manifest.log 2>/dev/null || true
           echo "=== ci-test.log ===" && tail -n 80 ../ci-test.log 2>/dev/null || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
