@@ -1,7 +1,7 @@
 {
-  "version": "2.15.0",
-  "versionCode": 73,
-  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.15.0/NijiCal-2.15.0.apk",
+  "version": "2.15.1",
+  "versionCode": 74,
+  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.15.1/NijiCal-2.15.1.apk",
   "publishedAt": "2026-11-19",
-  "notes": "chore(release): 2.15.0 (73)"
+  "notes": "chore(release): 2.15.1 (74)"
 }
