@@ -1,7 +1,7 @@
 {
-  "version": "2.15.1",
-  "versionCode": 74,
-  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.15.1/NijiCal-2.15.1.apk",
+  "version": "2.15.2",
+  "versionCode": 75,
+  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.15.2/NijiCal-2.15.2.apk",
   "publishedAt": "2026-11-19",
-  "notes": "chore(release): 2.15.1 (74)"
+  "notes": "刷新界面改成统计表（游戏/抓取/送审/入库/未通过），进度条等高，未通过只显示数量；读取条数步进改为 5。"
 }

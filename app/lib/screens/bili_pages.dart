@@ -317,7 +317,19 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         _finish('没有解析出事件（$fetched 条动态全部未通过），已保留原有 ${widget.state.liveEvents.length} 条');
         return;
       }
+      // 记下刷新前的 ID 集合，用于算「新增 / 删除」
+      final beforeIds = {
+        for (final e in widget.state.liveEvents)
+          if (widget.onlyGameId == null || e.gameId == widget.onlyGameId) e.id,
+      };
       final changes = await widget.state.applyLive(events.values.toList(), onlyGame: widget.onlyGameId);
+      final afterEvents = widget.state.liveEvents
+          .where((e) => widget.onlyGameId == null || e.gameId == widget.onlyGameId)
+          .toList();
+      final afterIds = {for (final e in afterEvents) e.id};
+      final newCount = afterIds.difference(beforeIds).length;
+      final removedCount = beforeIds.difference(afterIds).length;
+      final storedCount = afterEvents.length;
 
       if (changes.isNotEmpty) {
         // 改期是这套链路最有价值的部分：立刻推一条，别等用户自己发现
@@ -363,8 +375,8 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           ? '｜${stored.length} 条全是截止类事件，已被「显示截止事件」开关隐藏'
           : '';
       currentGameId = null;
-      _finish('完成：$added 条事件｜${entries.length} 个账号 · 送解析 $fetched 条（共拉 $rawFetched 条），${failures.length} 条未通过'
-          '${changes.isEmpty ? '' : '｜改期 ${changes.length} 项'}$hiddenNote');
+      _finish('已获取完成，共入库 $storedCount 条，其中新增 $newCount 条，删除 $removedCount 条'
+          '${changes.isEmpty ? '' : '；改期 ${changes.length} 项'}$hiddenNote');
     } catch (e) {
       _finish('失败：${'$e'.split('\n').first}');
     }

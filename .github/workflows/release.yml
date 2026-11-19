@@ -87,7 +87,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B ci-logs
-          git add -f ci-test.log || true
+          git add -f ci-test.log ci-manifest.log || true
           git commit -m "ci: 失败日志 $(date -u +%FT%TZ)" || true
           git push -f origin ci-logs || true
 
@@ -130,18 +130,35 @@ jobs:
           overwrite_files: true
 
       - name: 回写 updates/latest.json
+        env:
+          VER: ${{ steps.ver.outputs.name }}
+          CODE: ${{ steps.ver.outputs.code }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
         run: |
-          cat > updates/latest.json <<EOF
+          set -o pipefail
           {
-            "version": "${{ steps.ver.outputs.name }}",
-            "versionCode": ${{ steps.ver.outputs.code }},
-            "apkUrl": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/NijiCal-${{ steps.ver.outputs.name }}.apk",
-            "publishedAt": "$(date -u +%Y-%m-%d)",
-            "notes": "$(git log -1 --pretty=%s | sed 's/"/\\"/g')"
+            export NOTES="$(git log -1 --pretty=%s)"
+            python3 - <<'PY'
+          import json, os, datetime
+          ver = os.environ['VER']
+          code = int(os.environ['CODE'])
+          data = {
+              "version": ver,
+              "versionCode": code,
+              "apkUrl": f"https://github.com/{os.environ['REPO']}/releases/download/{os.environ['TAG']}/NijiCal-{ver}.apk",
+              "publishedAt": datetime.datetime.utcnow().strftime('%Y-%m-%d'),
+              "notes": os.environ.get('NOTES', ''),
           }
-          EOF
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add updates/latest.json
-          git commit -m "chore(release): 更新清单 ${{ steps.ver.outputs.name }} (${{ steps.ver.outputs.code }}) [skip ci]" || echo "清单无变化"
-          git push origin HEAD:main
+          with open('updates/latest.json', 'w', encoding='utf-8') as fh:
+              fh.write(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
+          PY
+            cat updates/latest.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add updates/latest.json
+            git commit -m "chore(release): 更新清单 $VER ($CODE) [skip ci]" || echo "清单无变化"
+            git fetch origin main
+            git pull --rebase origin main
+            git push origin HEAD:main
+          } 2>&1 | tee ../ci-manifest.log

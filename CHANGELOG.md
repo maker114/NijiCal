@@ -3,6 +3,16 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号与 `app/pubspec.yaml` 同源。
 分类只用：新增 / 变更 / 修复 / 移除。
 
+## [2.15.3] - 2026-11-19
+
+### 新增
+- 刷新完成后，结果行改为：**「已获取完成，共入库 X 条，其中新增 Y 条，删除 Z 条」**
+  （X = 本机事件总数，Y/Z = 相比刷新前的净增与净减，按事件 id 比对；有改期时追加「改期 N 项」）。
+
+### 修复
+- **CI 回写 `updates/latest.json` 偶发失败**（2.15.2 的发布就卡在这步，Release 已发出但清单没更新）。
+  改为用 python3 生成 JSON（避免 shell 引号/转义问题），push 前先 `fetch + pull --rebase`，
+  并把该步骤输出写入 ci-manifest.log（失败时随 ci-logs 分支上传，便于排查）。
 ## [2.15.2] - 2026-11-19
 
 ### 变更
@@ -47,6 +57,16 @@
 - 签名沿用现有 Android debug keystore，由仓库 secret `ANDROID_DEBUG_KEYSTORE_BASE64`
   传给 CI，保证 CI 产物与历史版本同一签名（应用内覆盖安装不失效）。
 - `releases/` 改为不入库（`2.14.3` 的包暂时保留，用于老版本用户升级）。
+## [2.15.3] - 2026-11-19
+
+### 新增
+- 刷新完成后，结果行改为：**「已获取完成，共入库 X 条，其中新增 Y 条，删除 Z 条」**
+  （X = 本机事件总数，Y/Z = 相比刷新前的净增与净减，按事件 id 比对；有改期时追加「改期 N 项」）。
+
+### 修复
+- **CI 回写 `updates/latest.json` 偶发失败**（2.15.2 的发布就卡在这步，Release 已发出但清单没更新）。
+  改为用 python3 生成 JSON（避免 shell 引号/转义问题），push 前先 `fetch + pull --rebase`，
+  并把该步骤输出写入 ci-manifest.log（失败时随 ci-logs 分支上传，便于排查）。
 ## [2.15.2] - 2026-11-19
 
 ### 变更
