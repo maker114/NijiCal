@@ -1,7 +1,7 @@
 {
-  "version": "2.14.4",
-  "versionCode": 72,
-  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.14.4/NijiCal-2.14.4.apk",
-  "publishedAt": "2026-11-18",
-  "notes": "fix(ci): 显式用 key.properties 签名，修 CI 产出证书与历史版本不一致"
+  "version": "2.15.0",
+  "versionCode": 73,
+  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.15.0/NijiCal-2.15.0.apk",
+  "publishedAt": "2026-11-19",
+  "notes": "chore(release): 2.15.0 (73)"
 }
