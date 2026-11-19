@@ -80,17 +80,6 @@ jobs:
           set -o pipefail
           flutter test 2>&1 | tee ../ci-test.log
 
-      # 失败时把日志推到 ci-logs 分支，方便维护者（本机读不到 Actions 日志时）排查
-      - name: 失败时上传日志
-        if: failure()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B ci-logs
-          git add -f ci-test.log ci-manifest.log || true
-          git commit -m "ci: 失败日志 $(date -u +%FT%TZ)" || true
-          git push -f origin ci-logs || true
-
       - name: 构建 APK
         working-directory: app
         run: |
@@ -137,23 +126,9 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -o pipefail
+          export NOTES="$(git log -1 --pretty=%s)"
           {
-            export NOTES="$(git log -1 --pretty=%s)"
-            python3 - <<'PY'
-          import json, os, datetime
-          ver = os.environ['VER']
-          code = int(os.environ['CODE'])
-          data = {
-              "version": ver,
-              "versionCode": code,
-              "apkUrl": f"https://github.com/{os.environ['REPO']}/releases/download/{os.environ['TAG']}/NijiCal-{ver}.apk",
-              "publishedAt": datetime.datetime.utcnow().strftime('%Y-%m-%d'),
-              "notes": os.environ.get('NOTES', ''),
-          }
-          with open('updates/latest.json', 'w', encoding='utf-8') as fh:
-              fh.write(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
-          PY
-            cat updates/latest.json
+            python3 .github/scripts/update_manifest.py
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add updates/latest.json
@@ -164,3 +139,16 @@ jobs:
             git rebase origin/main
             git push origin HEAD:main
           } 2>&1 | tee ../ci-manifest.log
+
+      # 失败时把日志推到 ci-logs 分支（放在最后，前面任何一步失败都会跑到这里）
+      - name: 失败时上传日志
+        if: failure()
+        run: |
+          echo "=== ci-manifest.log ===" && cat ../ci-manifest.log 2>/dev/null || true
+          echo "=== ci-test.log ===" && tail -n 80 ../ci-test.log 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B ci-logs
+          for f in ci-manifest.log ci-test.log; do [ -f "$f" ] && git add -f "$f"; done
+          git commit -m "ci: 失败日志 $(date -u +%FT%TZ)" || true
+          git push -f origin ci-logs || true

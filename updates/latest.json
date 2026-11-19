@@ -1,7 +1,7 @@
 {
-  "version": "2.15.3",
-  "versionCode": 76,
-  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.15.3/NijiCal-2.15.3.apk",
-  "publishedAt": "2026-11-19",
-  "notes": "刷新完成文案改为「已获取完成，共入库 X 条，其中新增 Y 条，删除 Z 条」；CI 清单回写改用 python 生成 + rebase。"
+  "version": "2.16.0",
+  "versionCode": 77,
+  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.16.0/NijiCal-2.16.0.apk",
+  "publishedAt": "2026-11-20",
+  "notes": "手动添加日程；版本/前瞻预测支持手动指定时间；刷新完成文案改为「拉取完成，入库 X 条，新增 Y 条，删除 Z 条」。"
 }
