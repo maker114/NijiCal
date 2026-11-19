@@ -70,6 +70,7 @@ class BiliService {
     WebViewController controller,
     String mid, {
     int pages = 2,
+    bool Function(List<Map<String, dynamic>> accumulated)? stopWhen,
   }) async {
     final out = <Map<String, dynamic>>[];
     var offset = '';
@@ -96,6 +97,8 @@ class BiliService {
         if (item is Map) out.add(item.cast<String, dynamic>());
       }
       final next = data['offset'];
+      // 够数就停：调用方按「预筛后可用条数」判断，避免读到 20 条却只有 13 条能解析
+      if (stopWhen != null && stopWhen(out)) break;
       if (data['has_more'] != true || next is! String || next.isEmpty) break;
       offset = next;
       await Future<void>.delayed(const Duration(milliseconds: 800));

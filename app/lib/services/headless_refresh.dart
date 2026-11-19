@@ -139,7 +139,8 @@ class HeadlessRefresh {
         if (data is! Map) break;
         final pageItems = data['items'];
         if (pageItems is List) items.addAll(pageItems);
-        if (items.length >= maxPosts) break;
+        // 按「预筛后可用条数」决定是否继续翻页，避免设置 20 却只解析 13 条
+        if (_prefilter(items, maxPosts).length >= maxPosts) break;
         final next = data['offset'];
         if (data['has_more'] != true || next is! String || next.isEmpty) break;
         offset = next;

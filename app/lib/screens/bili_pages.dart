@@ -106,6 +106,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
   String? account;
   int fetched = 0;
   int rawFetched = 0;
+  int gameRaw = 0; // 当前这个号实际抓到的原始动态条数
 
   @override
   void initState() {
@@ -201,10 +202,17 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         return;
       }
 
-      // 用户可配置每条账号读取多少条历史动态（设置 → 读取条数）
+      // 用户可配置每账号读取多少条历史动态（设置 → 读取条数）
       final perAccount = widget.state.biliMaxPosts;
-      // 接口一页约 12 条，按需要多拉几页；上限 6 页防止把风控惹毛
-      final pages = ((perAccount / 12).ceil()).clamp(1, 6);
+      // 接口一页约 12 条。按「预筛后可用条数」决定是否继续翻页，
+      // 否则会出现「设置 20 条、实际只有 13 条能解析」的落差。
+      int usableCount(List<Map<String, dynamic>> items) {
+        var n = 0;
+        for (final item in items) {
+          if (_prefilterRank(BiliService.dynamicsText(item)) > 0) n++;
+        }
+        return n;
+      }
       final entries = bindings.entries.toList();
       if (mounted) {
         setState(() {
@@ -216,6 +224,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       for (var index = 0; index < entries.length; index++) {
         final entry = entries[index];
         final name = games[entry.key]?.name ?? entry.key;
+        gameRaw = 0;
         _progress(
           '拉取 $name 的动态',
           game: index,
@@ -225,8 +234,14 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
 
         var taken = <Map<String, dynamic>>[];
         try {
-          final list = await BiliService.fetchSpace(controller, entry.value, pages: pages);
+          final list = await BiliService.fetchSpace(
+            controller,
+            entry.value,
+            pages: 6,
+            stopWhen: (acc) => usableCount(acc) >= perAccount,
+          );
           rawFetched += list.length;
+          gameRaw = list.length;
 
           // 头像已缓存就不用再请求一次（少一次接口调用，少一分被限流的概率）
           if (AvatarStore.pathOf(entry.key) == null) {
@@ -505,8 +520,9 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
                       // 下面一条：当前这个账号的动态解析进度
                       _ProgressBar(
                         label: itemTotal == 0
-                            ? '本游戏 · 拉取中'
-                            : '本游戏 ${finished ? itemTotal : itemDone}/$itemTotal',
+                            ? '本游戏 · 拉取中${gameRaw > 0 ? ' · 已拉到 $gameRaw 条' : ''}'
+                            : '本游戏 ${finished ? itemTotal : itemDone}/$itemTotal'
+                                '${gameRaw > 0 ? ' · 拉到 $gameRaw 条' : ''}',
                         value: itemTotal == 0
                             ? (finished ? 1 : 0)
                             : (finished ? 1 : itemDone / itemTotal),
