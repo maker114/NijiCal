@@ -54,9 +54,17 @@ git add app/pubspec.yaml app/lib/version.dart
 git commit -m $msg
 
 Step "打标签 v$Version 并推送"
-git tag "v$Version"
+# 先同步远端，避免本地落后导致 push 被拒（之前就这样静默失败过）
+git fetch origin main
+git rebase origin/main
+if ($LASTEXITCODE -ne 0) { throw 'rebase origin/main 失败，请手动解决冲突' }
+
 git push origin HEAD:main
+if ($LASTEXITCODE -ne 0) { throw 'push main 失败：远程可能有新提交，先 git pull --rebase 再重试' }
+
+git tag "v$Version"
 git push origin "v$Version"
+if ($LASTEXITCODE -ne 0) { throw 'push tag 失败' }
 
 Write-Host "`n已推送标签 v$Version。" -ForegroundColor Green
 Write-Host '到 GitHub → Actions 查看构建；完成后 App 内「检查更新」即可看到新版。'
