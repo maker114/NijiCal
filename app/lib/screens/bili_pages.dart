@@ -201,7 +201,10 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         return;
       }
 
-      const perAccount = 10;
+      // 用户可配置每条账号读取多少条历史动态（设置 → 读取条数）
+      final perAccount = widget.state.biliMaxPosts;
+      // 接口一页约 12 条，按需要多拉几页；上限 6 页防止把风控惹毛
+      final pages = ((perAccount / 12).ceil()).clamp(1, 6);
       final entries = bindings.entries.toList();
       if (mounted) {
         setState(() {
@@ -222,7 +225,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
 
         var taken = <Map<String, dynamic>>[];
         try {
-          final list = await BiliService.fetchSpace(controller, entry.value, pages: 2);
+          final list = await BiliService.fetchSpace(controller, entry.value, pages: pages);
           rawFetched += list.length;
 
           // 头像已缓存就不用再请求一次（少一次接口调用，少一分被限流的概率）

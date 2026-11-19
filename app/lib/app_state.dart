@@ -46,6 +46,21 @@ class AppState extends ChangeNotifier {
   int scheduledCount = 0;
   final List<String> corrections = [];
 
+  /// 每个账号最多读取多少条历史动态（抓取与送解析都按它来）
+  int biliMaxPosts = 20;
+
+  Future<void> loadBiliMaxPosts() async {
+    biliMaxPosts = await Prefs.loadBiliMaxPosts();
+    notifyListeners();
+  }
+
+  Future<void> setBiliMaxPosts(int value) async {
+    final clamped = value.clamp(10, 100);
+    biliMaxPosts = clamped;
+    Prefs.saveBiliMaxPosts(clamped);
+    notifyListeners();
+  }
+
   /// App 内手动刷新抓回来的事件（存在本机，覆盖同 URL 的内置事件）
   List<GameEvent> liveEvents = [];
   DateTime? liveFetchedAt;
@@ -55,6 +70,7 @@ class AppState extends ChangeNotifier {
       ..clear()
       ..addAll(await Prefs.loadBindings());
     remindersOn = await Prefs.loadRemindersEnabled();
+    biliMaxPosts = await Prefs.loadBiliMaxPosts();
     calendarView = await Prefs.loadCalendarView();
     showDeadlineEvents = await Prefs.loadShowDeadlineEvents();
     gameAccents

@@ -21,6 +21,62 @@ class SubscribeScreen extends StatelessWidget {
   final Future<void> Function() onEnableReminders;
   final Future<void> Function() onReschedule;
 
+  /// 选每个账号读取多少条历史动态
+  Future<void> _pickPostLimit(BuildContext context) async {
+    var value = state.biliMaxPosts;
+    final saved = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('读取多少条历史动态'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '每个账号最多读取 $value 条。条数越多越不容易漏公告，'
+                '但抓取更慢、大模型调用次数也更多。',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: value > 10 ? () => setDialogState(() => value -= 10) : null,
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                  SizedBox(
+                    width: 72,
+                    child: Text(
+                      '$value 条',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: value < 100 ? () => setDialogState(() => value += 10) : null,
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(value),
+              child: const Text('保存'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != null) await state.setBiliMaxPosts(saved);
+  }
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -62,6 +118,13 @@ class SubscribeScreen extends StatelessWidget {
                         builder: (_) => BiliAccountPage(state: state, onReschedule: onReschedule),
                       ),
                     ),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  SettingRow(
+                    icon: Icons.history,
+                    title: '读取条数',
+                    subtitle: '每个账号最多读取 ${state.biliMaxPosts} 条历史动态',
+                    onTap: () => _pickPostLimit(context),
                   ),
                   const Divider(height: 1, indent: 56),
                   SettingRow(
@@ -166,6 +229,7 @@ class _LlmRowState extends State<_LlmRow> {
     setState(() => cfg = value);
   }
 
+  @override
   @override
   Widget build(BuildContext context) {
     final configured = (cfg['apiKey'] ?? '').trim().isNotEmpty;

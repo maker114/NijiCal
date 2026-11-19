@@ -240,4 +240,16 @@ abstract class Prefs {
   static Future<void> saveUpdateCheckedAt(DateTime value) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setString(_updateCheckedKey, value.toIso8601String());
+  }
+  // 每个账号最多读取多少条历史动态（影响抓取页数与送大模型解析的条数）
+  static const _maxPostsKey = 'nijical.bili.maxPosts';
+
+  static Future<int> loadBiliMaxPosts() async {
+    final sp = await SharedPreferences.getInstance();
+    return sp.getInt(_maxPostsKey) ?? 20;
+  }
+
+  static Future<void> saveBiliMaxPosts(int value) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setInt(_maxPostsKey, value);
   }}

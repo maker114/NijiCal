@@ -32,6 +32,7 @@ class HeadlessRefresh {
         return const HeadlessResult(ok: false, message: '还没有绑定官号');
       }
 
+      final maxPosts = await Prefs.loadBiliMaxPosts();
       final cfg = await Prefs.loadLlm();
       final config = LlmConfig(
         baseUrl: cfg['baseUrl'] ?? LlmConfig.fallback.baseUrl,
@@ -48,8 +49,8 @@ class HeadlessRefresh {
 
       for (final entry in bindings.entries) {
         try {
-          final res = await _fetchSpace(cookies, entry.value);
-          final picked = _prefilter(res.items);
+          final res = await _fetchSpace(cookies, entry.value, maxPosts);
+          final picked = _prefilter(res.items, maxPosts);
           diag.add('${entry.key}: code=${res.code} 拉到=${res.items.length} 送解析=${picked.length}');
           for (final item in picked) {
             try {
@@ -102,29 +103,49 @@ class HeadlessRefresh {
     }
   }
 
-  static Future<({int code, List<dynamic> items})> _fetchSpace(String cookies, String mid) async {
+  static Future<({int code, List<dynamic> items})> _fetchSpace(
+    String cookies,
+    String mid,
+    int maxPosts,
+  ) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
     try {
-      final uri = Uri.parse(
-        'https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space'
-        '?host_mid=$mid&timezone_offset=-480'
-        '&features=itemOpusStyle,listOnlyfans,opusBigCover,onlyfansVote',
-      );
-      final request = await client.getUrl(uri);
-      request.headers
-        ..set(HttpHeaders.userAgentHeader, _ua)
-        ..set(HttpHeaders.refererHeader, 'https://space.bilibili.com/$mid/dynamic')
-        ..set(HttpHeaders.cookieHeader, cookies);
-      final response = await request.close();
-      final body = await response.transform(utf8.decoder).join();
-      final json = jsonDecode(body);
-      if (json is! Map) return (code: -1, items: const <dynamic>[]);
-      final code = (json['code'] as num?)?.toInt() ?? -1;
-      if (code != 0) return (code: code, items: const <dynamic>[]);
-      final data = json['data'];
-      if (data is! Map) return (code: code, items: const <dynamic>[]);
-      final items = data['items'];
-      return (code: 0, items: items is List ? items : const <dynamic>[]);
+      // 接口一页约 12 条，按需要的条数翻页；上限 6 页，别把风控惹毛
+      final pages = ((maxPosts / 12).ceil()).clamp(1, 6);
+      final items = <dynamic>[];
+      var offset = '';
+      var code = 0;
+      for (var page = 0; page < pages; page++) {
+        final uri = Uri.parse(
+          'https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space'
+          '?host_mid=$mid&offset=${Uri.encodeComponent(offset)}&timezone_offset=-480'
+          '&features=itemOpusStyle,listOnlyfans,opusBigCover,onlyfansVote',
+        );
+        final request = await client.getUrl(uri);
+        request.headers
+          ..set(HttpHeaders.userAgentHeader, _ua)
+          ..set(HttpHeaders.refererHeader, 'https://space.bilibili.com/$mid/dynamic')
+          ..set(HttpHeaders.cookieHeader, cookies);
+        final response = await request.close();
+        final body = await response.transform(utf8.decoder).join();
+        final json = jsonDecode(body);
+        if (json is! Map) {
+          code = -1;
+          break;
+        }
+        code = (json['code'] as num?)?.toInt() ?? -1;
+        if (code != 0) break;
+        final data = json['data'];
+        if (data is! Map) break;
+        final pageItems = data['items'];
+        if (pageItems is List) items.addAll(pageItems);
+        if (items.length >= maxPosts) break;
+        final next = data['offset'];
+        if (data['has_more'] != true || next is! String || next.isEmpty) break;
+        offset = next;
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+      }
+      return (code: code, items: items);
     } catch (e) {
       return (code: -2, items: const <dynamic>[]);
     } finally {
@@ -132,7 +153,7 @@ class HeadlessRefresh {
     }
   }
 
-  static List<Map<String, dynamic>> _prefilter(List<dynamic> items) {
+  static List<Map<String, dynamic>> _prefilter(List<dynamic> items, int maxPosts) {
     final out = <Map<String, dynamic>>[];
     for (final raw in items) {
       if (raw is! Map) continue;
@@ -146,7 +167,7 @@ class HeadlessRefresh {
       if (!hasKeyword && !hasTime) continue;
       item['_text'] = text;
       out.add(item);
-      if (out.length >= 8) break;
+      if (out.length >= maxPosts) break;
     }
     return out;
   }
