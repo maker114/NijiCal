@@ -158,7 +158,9 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add updates/latest.json
             git commit -m "chore(release): 更新清单 $VER ($CODE) [skip ci]" || echo "清单无变化"
+            # 注意：checkout 在 tag 上是 detached HEAD，不能 git pull --rebase（会报
+            # "You are not currently on a branch"），只能 fetch 后 rebase 到 origin/main
             git fetch origin main
-            git pull --rebase origin main
+            git rebase origin/main
             git push origin HEAD:main
           } 2>&1 | tee ../ci-manifest.log
