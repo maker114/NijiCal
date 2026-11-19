@@ -1,7 +1,7 @@
 {
-  "version": "2.16.0",
-  "versionCode": 77,
-  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.16.0/NijiCal-2.16.0.apk",
+  "version": "2.16.1",
+  "versionCode": 78,
+  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.16.1/NijiCal-2.16.1.apk",
   "publishedAt": "2026-11-19",
-  "notes": "fix(ci): 清单日志写进仓库并把退出码透传出去"
+  "notes": "chore(release): 2.16.1 (78)"
 }
