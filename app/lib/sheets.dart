@@ -303,6 +303,22 @@ Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent eve
             ),
           ],
         ),
+        // 手动添加的日程允许删除（抓来的删了下次刷新还会回来，所以不提供）
+        if (event.sourceName == '手动添加') ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () async {
+                final sheetContext = context;
+                await state.removeManualEvent(event.id);
+                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+              },
+              style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+              child: const Text('删除这条日程'),
+            ),
+          ),
+        ],
       ],
     ),
       ),

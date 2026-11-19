@@ -46,11 +46,34 @@ class AppState extends ChangeNotifier {
   int scheduledCount = 0;
   final List<String> corrections = [];
 
+  /// 手动添加的事件（存在本机，刷新不会覆盖）
+  final List<GameEvent> manualEvents = [];
+
+  Future<void> loadManualEvents() async {
+    manualEvents
+      ..clear()
+      ..addAll((await Prefs.loadManualEvents()).map(GameEvent.fromJson));
+    notifyListeners();
+  }
+
+  Future<void> addManualEvent(GameEvent event) async {
+    manualEvents.add(event);
+    await Prefs.saveManualEvents(manualEvents.map((e) => e.toJson()).toList());
+    notifyListeners();
+  }
+
+  Future<void> removeManualEvent(String id) async {
+    manualEvents.removeWhere((e) => e.id == id);
+    await Prefs.saveManualEvents(manualEvents.map((e) => e.toJson()).toList());
+    notifyListeners();
+  }
+
   /// 每个账号最多读取多少条历史动态（抓取与送解析都按它来）
   int biliMaxPosts = 20;
 
   Future<void> loadBiliMaxPosts() async {
     biliMaxPosts = await Prefs.loadBiliMaxPosts();
+    await loadManualEvents();
     notifyListeners();
   }
 
@@ -71,6 +94,7 @@ class AppState extends ChangeNotifier {
       ..addAll(await Prefs.loadBindings());
     remindersOn = await Prefs.loadRemindersEnabled();
     biliMaxPosts = await Prefs.loadBiliMaxPosts();
+    await loadManualEvents();
     calendarView = await Prefs.loadCalendarView();
     showDeadlineEvents = await Prefs.loadShowDeadlineEvents();
     gameAccents
@@ -96,12 +120,13 @@ class AppState extends ChangeNotifier {
     final bundled = data?.events ?? const <GameEvent>[];
     final List<GameEvent> merged;
     if (liveEvents.isEmpty) {
-      merged = bundled;
+      merged = [...bundled, ...manualEvents];
     } else {
       final liveUrls = liveEvents.map((e) => e.sourceUrl).whereType<String>().toSet();
       merged = [
         ...liveEvents,
         ...bundled.where((e) => !liveUrls.contains(e.sourceUrl)),
+        ...manualEvents,
       ];
     }
     // 游戏被移除后，它的日程也不再显示
@@ -268,9 +293,9 @@ class AppState extends ChangeNotifier {
       final game = gameMap[entry.key];
       if (game == null) continue;
 
-      final last = predictionBaseOf(entry.key);
-      if (last == null) continue;
-      final nextUpdate = last.add(Duration(days: setting.cycleDays));
+      // 手动指定的日期优先；否则按「上次版本更新 + 周期」推算
+      final base = predictionBaseOf(entry.key);
+      final nextUpdate = setting.nextUpdateAt ?? base?.add(Duration(days: setting.cycleDays));
 
       bool confirmed(String type, DateTime day) => allEvents.any((e) =>
           e.gameId == entry.key &&
@@ -278,26 +303,32 @@ class AppState extends ChangeNotifier {
           !e.predicted &&
           e.due.difference(day).inDays.abs() <= 2);
 
-      if (setting.version && nextUpdate.isAfter(now) && !confirmed('版本更新', nextUpdate)) {
+      if (setting.version && nextUpdate != null && nextUpdate.isAfter(now) &&
+          !confirmed('版本更新', nextUpdate)) {
         out.add(_predictedEvent(
           id: 'pred-${entry.key}-update',
           game: game,
           type: '版本更新',
           title: '${game.short} 下个版本更新（预测）',
           due: nextUpdate,
-          summary: '按上个版本更新（${last.month}月${last.day}日）推算：周期约 ${setting.cycleDays} 天。',
+          summary: setting.nextUpdateAt != null
+              ? '手动指定的版本更新时间。'
+              : '按上个版本更新（${base!.month}月${base.day}日）推算：周期约 ${setting.cycleDays} 天。',
         ));
       }
 
-      final previewDay = nextUpdate.subtract(Duration(days: setting.leadDays));
-      if (setting.preview && previewDay.isAfter(now) && !confirmed('前瞻直播', previewDay)) {
+      final previewDay = setting.previewAt ?? nextUpdate?.subtract(Duration(days: setting.leadDays));
+      if (setting.preview && previewDay != null && previewDay.isAfter(now) &&
+          !confirmed('前瞻直播', previewDay)) {
         out.add(_predictedEvent(
           id: 'pred-${entry.key}-preview',
           game: game,
           type: '前瞻直播',
           title: '${game.short} 下个版本前瞻（预测）',
           due: previewDay,
-          summary: '比版本更新（${nextUpdate.month}月${nextUpdate.day}日）提前 ${setting.leadDays} 天。',
+          summary: setting.previewAt != null
+              ? '手动指定的前瞻时间。'
+              : '比版本更新（${nextUpdate!.month}月${nextUpdate.day}日）提前 ${setting.leadDays} 天。',
         ));
       }
     }

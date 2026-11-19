@@ -242,7 +242,15 @@ class PredictionSetting {
     this.version = false,
     this.cycleDays = 42,
     this.leadDays = 7,
+    this.nextUpdateAt,
+    this.previewAt,
   });
+
+  /// 手动指定的「下个版本更新」时间；非空时优先于周期推算
+  final DateTime? nextUpdateAt;
+
+  /// 手动指定的「下个版本前瞻」时间；非空时优先于「版本更新 - 提前天数」
+  final DateTime? previewAt;
 
   /// 是否预测下个版本的前瞻直播
   final bool preview;
@@ -256,12 +264,23 @@ class PredictionSetting {
   /// 前瞻比版本更新提前几天
   final int leadDays;
 
-  PredictionSetting copyWith({bool? preview, bool? version, int? cycleDays, int? leadDays}) =>
+  PredictionSetting copyWith({
+    bool? preview,
+    bool? version,
+    int? cycleDays,
+    int? leadDays,
+    DateTime? nextUpdateAt,
+    DateTime? previewAt,
+    bool clearNextUpdateAt = false,
+    bool clearPreviewAt = false,
+  }) =>
       PredictionSetting(
         preview: preview ?? this.preview,
         version: version ?? this.version,
         cycleDays: cycleDays ?? this.cycleDays,
         leadDays: leadDays ?? this.leadDays,
+        nextUpdateAt: clearNextUpdateAt ? null : (nextUpdateAt ?? this.nextUpdateAt),
+        previewAt: clearPreviewAt ? null : (previewAt ?? this.previewAt),
       );
 
   bool get enabled => preview || version;
@@ -271,6 +290,8 @@ class PredictionSetting {
         'version': version,
         'cycleDays': cycleDays,
         'leadDays': leadDays,
+        'nextUpdateAt': nextUpdateAt?.toIso8601String(),
+        'previewAt': previewAt?.toIso8601String(),
       };
 
   factory PredictionSetting.fromJson(Map<String, dynamic> j) => PredictionSetting(
@@ -278,5 +299,7 @@ class PredictionSetting {
         version: j['version'] as bool? ?? false,
         cycleDays: (j['cycleDays'] as num?)?.toInt() ?? 42,
         leadDays: (j['leadDays'] as num?)?.toInt() ?? 7,
+        nextUpdateAt: DateTime.tryParse('${j['nextUpdateAt'] ?? ''}'),
+        previewAt: DateTime.tryParse('${j['previewAt'] ?? ''}'),
       );
 }

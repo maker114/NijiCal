@@ -20,6 +20,30 @@ class GameDetailPage extends StatelessWidget {
   final Game game;
 
   /// 用这款游戏的官号头像重新算一次标识色
+  /// 选日期 + 时间，合成一个本地时间
+  Future<void> _pickDate(
+    BuildContext context, {
+    DateTime? initial,
+    required void Function(DateTime) onPicked,
+  }) async {
+    final base = initial ?? DateTime.now().add(const Duration(days: 7));
+    final date = await showDatePicker(
+      context: context,
+      initialDate: base,
+      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      lastDate: DateTime.now().add(const Duration(days: 400)),
+      helpText: '选择日期',
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(base),
+      helpText: '选择时间',
+    );
+    if (time == null) return;
+    onPicked(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+  }
+
   Future<void> _applyLogoAccent(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     final path = AvatarStore.pathOf(game.id);
@@ -150,6 +174,31 @@ class GameDetailPage extends StatelessWidget {
                       onChange: (v) => state.setPrediction(game.id, setting.copyWith(leadDays: v)),
                     ),
                   ],
+                ),
+                const SizedBox(height: 10),
+                _ManualDateRow(
+                  label: '手动指定版本更新',
+                  value: setting.nextUpdateAt,
+                  onPick: () => _pickDate(
+                    context,
+                    initial: setting.nextUpdateAt,
+                    onPicked: (d) => state.setPrediction(game.id, setting.copyWith(nextUpdateAt: d)),
+                  ),
+                  onClear: setting.nextUpdateAt == null
+                      ? null
+                      : () => state.setPrediction(game.id, setting.copyWith(clearNextUpdateAt: true)),
+                ),
+                _ManualDateRow(
+                  label: '手动指定前瞻时间',
+                  value: setting.previewAt,
+                  onPick: () => _pickDate(
+                    context,
+                    initial: setting.previewAt,
+                    onPicked: (d) => state.setPrediction(game.id, setting.copyWith(previewAt: d)),
+                  ),
+                  onClear: setting.previewAt == null
+                      ? null
+                      : () => state.setPrediction(game.id, setting.copyWith(clearPreviewAt: true)),
                 ),
                 const SizedBox(height: 18),
                 SizedBox(
@@ -427,6 +476,48 @@ class _Stepper extends StatelessWidget {
           icon: const Icon(Icons.add_circle_outline, size: 20),
         ),
       ],
+    );
+  }
+}
+
+/// 一行「手动指定日期」：未设置时显示选择按钮，已设置时显示日期 + 清除
+class _ManualDateRow extends StatelessWidget {
+  const _ManualDateRow({
+    required this.label,
+    required this.value,
+    required this.onPick,
+    required this.onClear,
+  });
+
+  final String label;
+  final DateTime? value;
+  final VoidCallback onPick;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: theme.textTheme.bodySmall)),
+          if (value == null)
+            TextButton(onPressed: onPick, child: const Text('选择'))
+          else ...[
+            Text(
+              '${value!.month} 月 ${value!.day} 日 ${value!.hour.toString().padLeft(2, '0')}:'
+              '${value!.minute.toString().padLeft(2, '0')}',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.primary),
+            ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: onClear,
+              icon: const Icon(Icons.close, size: 16),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -252,4 +252,24 @@ abstract class Prefs {
   static Future<void> saveBiliMaxPosts(int value) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setInt(_maxPostsKey, value);
+  }
+  // 手动添加的事件（本机，刷新不会覆盖）
+  static const _manualEventsKey = 'nijical.manualEvents';
+
+  static Future<List<Map<String, dynamic>>> loadManualEvents() async {
+    final sp = await SharedPreferences.getInstance();
+    final raw = sp.getStringList(_manualEventsKey) ?? const <String>[];
+    final out = <Map<String, dynamic>>[];
+    for (final line in raw) {
+      try {
+        final decoded = jsonDecode(line);
+        if (decoded is Map) out.add(decoded.cast<String, dynamic>());
+      } catch (_) {}
+    }
+    return out;
+  }
+
+  static Future<void> saveManualEvents(List<Map<String, dynamic>> events) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setStringList(_manualEventsKey, [for (final e in events) jsonEncode(e)]);
   }}

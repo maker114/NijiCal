@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 
+import 'add_event_sheet.dart';
 import 'app_state.dart';
 import 'motion.dart';
 import 'screens/calendar_screen.dart';
@@ -214,6 +215,12 @@ class _ShellBodyState extends State<_ShellBody> {
       appBar: AppBar(
         title: Text(widget.titles[tab]),
         actions: [
+          if (tab == 0)
+            IconButton(
+              tooltip: '手动添加日程',
+              onPressed: () => showAddEventSheet(context, widget.state),
+              icon: const Icon(Icons.add),
+            ),
           if (tab == 0)
             IconButton(
               tooltip: '从 B 站刷新',
