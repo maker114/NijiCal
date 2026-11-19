@@ -125,12 +125,17 @@ class GameDetailPage extends StatelessWidget {
                 Text('预测', style: theme.textTheme.labelLarge),
                 const SizedBox(height: 4),
                 Text(
-                  base == null
-                      ? '还没有这个号的版本记录，先去设置页刷新一次，才有日期可以推算。'
-                      : '以 ${md(base)} 的版本为基准；'
-                          '预计下个版本 ${nextUpdate == null ? '—' : md(nextUpdate)}。',
+                  setting.nextUpdateAt != null
+                      ? '下个版本已手动指定为 ${md(setting.nextUpdateAt!)}'
+                          '${nextUpdate == null ? '' : '（按周期自动推算为 ${md(nextUpdate)}）'}。'
+                      : base == null
+                          ? '还没有这个号的版本记录，先去设置页刷新一次，才有日期可以推算。'
+                          : '以 ${md(base)} 的版本为基准；'
+                              '预计下个版本 ${nextUpdate == null ? '—' : md(nextUpdate)}。',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: base == null ? theme.colorScheme.error : null,
+                    color: base == null && setting.nextUpdateAt == null
+                        ? theme.colorScheme.error
+                        : null,
                   ),
                 ),
                 SwitchListTile.adaptive(
