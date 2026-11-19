@@ -107,6 +107,8 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
   int fetched = 0;
   int rawFetched = 0;
   int gameRaw = 0; // 当前这个号实际抓到的原始动态条数
+  List<String> gameOrder = const []; // 表格行顺序（绑定顺序）
+  String? currentGameId; // 正在抓的号，表格里高亮
 
   @override
   void initState() {
@@ -214,6 +216,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         return n;
       }
       final entries = bindings.entries.toList();
+      gameOrder = entries.map((e) => e.key).toList();
       if (mounted) {
         setState(() {
           gameTotal = entries.length;
@@ -225,6 +228,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         final entry = entries[index];
         final name = games[entry.key]?.name ?? entry.key;
         gameRaw = 0;
+        currentGameId = entry.key;
         _progress(
           '拉取 $name 的动态',
           game: index,
@@ -242,6 +246,8 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           );
           rawFetched += list.length;
           gameRaw = list.length;
+          stats[entry.key] = _GameStat(raw: list.length, strict: 0, loose: 0, taken: 0);
+          if (mounted) setState(() {});
 
           // 头像已缓存就不用再请求一次（少一次接口调用，少一分被限流的概率）
           if (AvatarStore.pathOf(entry.key) == null) {
@@ -356,6 +362,7 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
       final hiddenNote = stored.isNotEmpty && visible == 0
           ? '｜${stored.length} 条全是截止类事件，已被「显示截止事件」开关隐藏'
           : '';
+      currentGameId = null;
       _finish('完成：$added 条事件｜${entries.length} 个账号 · 送解析 $fetched 条（共拉 $rawFetched 条），${failures.length} 条未通过'
           '${changes.isEmpty ? '' : '｜改期 ${changes.length} 项'}$hiddenNote');
     } catch (e) {
@@ -511,13 +518,12 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // 上面一条：整轮刷新的进度（几个账号里完成到第几个）
+                      // 两条进度条：整轮 / 本游戏，厚度一致
                       _ProgressBar(
                         label: '游戏 ${finished ? gameTotal : gameDone}/$gameTotal',
                         value: finished ? 1 : gameDone / (gameTotal == 0 ? 1 : gameTotal),
                       ),
                       const SizedBox(height: 8),
-                      // 下面一条：当前这个账号的动态解析进度
                       _ProgressBar(
                         label: itemTotal == 0
                             ? '本游戏 · 拉取中${gameRaw > 0 ? ' · 已拉到 $gameRaw 条' : ''}'
@@ -526,55 +532,27 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
                         value: itemTotal == 0
                             ? (finished ? 1 : 0)
                             : (finished ? 1 : itemDone / itemTotal),
-                        subtle: true,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Text(message, style: theme.textTheme.bodyMedium),
-                      if (finished && log.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 150),
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                for (final line in log)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 3),
-                                    child: Text(line, style: theme.textTheme.labelSmall),
-                                  ),
-                              ],
+                      const SizedBox(height: 12),
+                      _RefreshTable(
+                        rows: [
+                          for (final id in gameOrder)
+                            _RefreshRow(
+                              name: widget.state.gameMap[id]?.name ?? id,
+                              accent: widget.state.gameMap[id] == null
+                                  ? theme.colorScheme.primary
+                                  : widget.state.gameAccentOf(widget.state.gameMap[id]!),
+                              raw: stats[id]?.raw,
+                              taken: stats[id]?.taken,
+                              parsed: stats[id]?.parsed,
+                              failed: stats[id]?.failed,
+                              active: id == currentGameId,
                             ),
-                          ),
-                        ),
-                      ],
-                      if (failures.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          '未通过（${failures.length}）',
-                          style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error),
-                        ),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 180),
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                for (final line in failures)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 4),
-                                    child: Text(line, style: theme.textTheme.labelSmall),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      Text(
-                        '只读你绑定的官号；每条动态都先过大模型规范化，抽不出时间的不入库。',
-                        style: theme.textTheme.labelSmall,
+                        ],
                       ),
+                      const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -622,11 +600,10 @@ class _GameStat {
 
 /// 一条带标签的细进度条
 class _ProgressBar extends StatelessWidget {
-  const _ProgressBar({required this.label, required this.value, this.subtle = false});
+  const _ProgressBar({required this.label, required this.value});
 
   final String label;
   final double value;
-  final bool subtle;
 
   @override
   Widget build(BuildContext context) {
@@ -637,23 +614,138 @@ class _ProgressBar extends StatelessWidget {
       children: [
         Text(
           label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: subtle ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface,
-          ),
+          style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface),
         ),
         const SizedBox(height: 4),
         ClipRRect(
           borderRadius: BorderRadius.circular(AppShapes.pillRadius),
           child: LinearProgressIndicator(
             value: v,
-            minHeight: subtle ? 4 : 6,
+            minHeight: 6,
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
-            color: subtle
-                ? theme.colorScheme.primary.withValues(alpha: 0.55)
-                : theme.colorScheme.primary,
+            color: theme.colorScheme.primary,
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 刷新弹窗里的统计表：游戏 / 抓取 / 送审 / 入库 / 未通过
+class _RefreshTable extends StatelessWidget {
+  const _RefreshTable({required this.rows});
+
+  final List<_RefreshRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final header = theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Expanded(flex: 9, child: Text('游戏', style: header)),
+              Expanded(flex: 3, child: Text('抓取', textAlign: TextAlign.center, style: header)),
+              Expanded(flex: 3, child: Text('送审', textAlign: TextAlign.center, style: header)),
+              Expanded(flex: 3, child: Text('入库', textAlign: TextAlign.center, style: header)),
+              Expanded(flex: 3, child: Text('未通过', textAlign: TextAlign.center, style: header)),
+            ],
+          ),
+        ),
+        for (final row in rows) _RefreshTableRow(row: row),
+      ],
+    );
+  }
+}
+
+class _RefreshRow {
+  const _RefreshRow({
+    required this.name,
+    required this.accent,
+    required this.active,
+    this.raw,
+    this.taken,
+    this.parsed,
+    this.failed,
+  });
+
+  final String name;
+  final Color accent;
+  final bool active;
+  final int? raw;
+  final int? taken;
+  final int? parsed;
+  final int? failed;
+}
+
+class _RefreshTableRow extends StatelessWidget {
+  const _RefreshTableRow({required this.row});
+
+  final _RefreshRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final valueStyle = theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant);
+    String show(int? v) => v == null ? '—' : '$v';
+    return Container(
+      decoration: BoxDecoration(
+        color: row.active ? row.accent.withValues(alpha: 0.14) : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 9,
+            child: Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: row.accent,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    row.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: row.active ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(flex: 3, child: Text(show(row.raw), textAlign: TextAlign.center, style: valueStyle)),
+          Expanded(flex: 3, child: Text(show(row.taken), textAlign: TextAlign.center, style: valueStyle)),
+          Expanded(
+            flex: 3,
+            child: Text(
+              show(row.parsed),
+              textAlign: TextAlign.center,
+              style: valueStyle?.copyWith(color: (row.parsed ?? 0) > 0 ? scheme.primary : null),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              show(row.failed),
+              textAlign: TextAlign.center,
+              style: valueStyle?.copyWith(color: (row.failed ?? 0) > 0 ? scheme.error : null),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

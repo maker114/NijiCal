@@ -43,7 +43,7 @@ class SubscribeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
-                    onPressed: value > 10 ? () => setDialogState(() => value -= 10) : null,
+                    onPressed: value > 10 ? () => setDialogState(() => value -= 5) : null,
                     icon: const Icon(Icons.remove_circle_outline),
                   ),
                   SizedBox(
@@ -55,7 +55,7 @@ class SubscribeScreen extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    onPressed: value < 100 ? () => setDialogState(() => value += 10) : null,
+                    onPressed: value < 100 ? () => setDialogState(() => value += 5) : null,
                     icon: const Icon(Icons.add_circle_outline),
                   ),
                 ],
