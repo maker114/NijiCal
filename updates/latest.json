@@ -2,6 +2,6 @@
   "version": "2.16.0",
   "versionCode": 77,
   "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.16.0/NijiCal-2.16.0.apk",
-  "publishedAt": "2026-11-20",
-  "notes": "手动添加日程；版本/前瞻预测支持手动指定时间；刷新完成文案改为「拉取完成，入库 X 条，新增 Y 条，删除 Z 条」。"
+  "publishedAt": "2026-11-19",
+  "notes": "fix(ci): 清单日志写进仓库并把退出码透传出去"
 }
