@@ -1,4 +1,4 @@
-# 发版：改版本号 → 构建校验 → 打 tag 推送 → 由 GitHub Actions 构建并发布
+﻿# 发版：改版本号 → 构建校验 → 打 tag 推送 → 由 GitHub Actions 构建并发布
 #
 # 用法：
 #   tool/release.ps1 -Version 2.15.0 -Code 72
