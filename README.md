@@ -14,6 +14,7 @@
 | [`mvp/`](mvp/) | 数据端与工具：`data/*.json` 是打包进 App 的种子数据，`tools/build.py` 校验并生成 `app/assets/data.json` |
 | [`updates/`](updates/) | `latest.json`：App 内「检查更新」读取的版本清单 |
 | [`.github/workflows/`](.github/workflows/) | 发版流水线：打 tag 自动构建并发布 Release |
+| [`AGENTS.md`](AGENTS.md) | 对 AI 协作者的项目约定：红线、迭代与发版流程、真机验证要点 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 版本与改动记录（Keep a Changelog） |
 
 ## 数据从哪来
