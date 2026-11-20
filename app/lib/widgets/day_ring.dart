@@ -2,11 +2,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// 日期外面那圈**按游戏色分段**的圆环 —— 直接搬自 GuideLine 的 `DayRing`。
+/// 日期外面那圈**按游戏色分段**的圆环。
 ///
-/// 一条事件一段弧：一天两条各占一半、三条各占三分之一，从 12 点方向顺时针。
-/// 颜色取游戏标识色；几条都同色时看起来就是实心环，那也是对的
-/// —— 它表达的是"这一天有两条"。
+/// 一条事件一段弧，角度按**事件条数**分配：一天 4 条、其中 A 两条、B/C 各一条，
+/// 就是 A 180°、B 90°、C 90°，从 12 点方向顺时针。
+/// 同一游戏的多条弧相邻同色，连起来就是该游戏在这天的占比。
 class DayRing extends StatelessWidget {
   const DayRing({super.key, required this.colors, required this.selected, required this.child});
 

@@ -292,7 +292,7 @@ class _ShellBodyState extends State<_ShellBody> {
         index: tab,
         children: [
           CalendarScreen(state: widget.state),
-          LibraryScreen(state: widget.state),
+          LibraryScreen(state: widget.state, onReschedule: widget.onReschedule),
           SubscribeScreen(
             state: widget.state,
             onEnableReminders: () => widget.onEnableReminders(context),

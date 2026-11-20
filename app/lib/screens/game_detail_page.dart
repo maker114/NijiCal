@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import 'bili_pages.dart';
 import '../services/avatar_store.dart';
 import '../services/logo_color.dart';
 import '../format.dart';
@@ -14,10 +15,33 @@ import '../widgets.dart';
 /// 游戏详情：更新时间、UID、已追踪条数、详细日程。
 /// 设置（标识色 / UID）收在右上角，不占正文。
 class GameDetailPage extends StatelessWidget {
-  const GameDetailPage({super.key, required this.state, required this.game});
+  const GameDetailPage({
+    super.key,
+    required this.state,
+    required this.game,
+    this.onReschedule,
+  });
 
   final AppState state;
   final Game game;
+
+  /// 单号刷新结束后重排提醒（由外层壳传入）
+  final Future<void> Function()? onReschedule;
+
+  /// 只刷新这一个游戏：不动其它游戏的日程
+  Future<void> _refreshOnlyGame(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (state.bindings[game.id] == null) {
+      messenger.showSnackBar(const SnackBar(content: Text('这个游戏还没有绑定官号 UID')));
+      return;
+    }
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => BiliRefreshDialog(state: state, onlyGameId: game.id),
+    );
+    await onReschedule?.call();
+  }
 
   /// 用这款游戏的官号头像重新算一次标识色
   /// 选日期 + 时间，合成一个本地时间
@@ -300,6 +324,11 @@ class GameDetailPage extends StatelessWidget {
           appBar: AppBar(
             title: Text(game.name),
             actions: [
+              IconButton(
+                tooltip: '只刷新这个游戏',
+                onPressed: () => _refreshOnlyGame(context),
+                icon: const Icon(Icons.refresh),
+              ),
               IconButton(
                 tooltip: '设置',
                 onPressed: () => _openSettings(context),

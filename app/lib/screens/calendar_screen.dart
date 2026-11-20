@@ -285,10 +285,10 @@ Map<String, List<Color>> marksByDate(
     // 已过期的事件用低饱和度的同一支色，日历上仍能看出「那天有过什么」
     // 过期事件统一用一个灰，不再按游戏着色，避免和未来事件抢注意力
     final color = _isPast(event) ? const Color(0xFFC9C9C9) : base;
-    marks.putIfAbsent(day, () => <Color>[]).add(color);
-    if (marks[day]!.length > 3) {
-      marks[day] = marks[day]!.take(3).toList();
-    }
+    // 一条事件一段弧 → 同一天里 A 有两条、B/C 各一条时，颜色占比自然就是 2:1:1。
+    // 上限 12 段只是不让极端日子变成一圈碎屑。
+    final list = marks.putIfAbsent(day, () => <Color>[]);
+    if (list.length < 12) list.add(color);
   }
   return marks;
 }

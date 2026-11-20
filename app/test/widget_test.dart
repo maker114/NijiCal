@@ -481,4 +481,36 @@ void main() {
       expect(parts[0], kAppVersion, reason: 'pubspec 版本名与 kAppVersion 不一致');
       expect(int.parse(parts[1]), kAppVersionCode, reason: 'pubspec 构建号与 kAppVersionCode 不一致');
     });
+  });
+  group('标题指纹与去重', () {
+    test('同一场前瞻的不同写法指纹相同', () {
+      final a = titleFingerprint('2.0 版本揭幕前瞻特别节目');
+      final b = titleFingerprint('终末地 2.0 版本前瞻特别节目');
+      final c = titleFingerprint('2.0 版本前瞻特别节目');
+      expect(a, b);
+      expect(b, c);
+      expect(a, isNotEmpty);
+    });
+
+    test('不同角色的卡池不会被合并', () {
+      final a = titleFingerprint('「挽昼」限定寻访开启');
+      final b = titleFingerprint('「卡芙卡」限定寻访开启');
+      expect(a, isNot(b));
+    });
+
+    test('三条同事件的记录会被去重成一条', () {
+      final t = DateTime.parse('2026-11-21T19:30:00+08:00');
+      final events = [
+        _ev(id: 'a', title: '2.0 版本揭幕前瞻特别节目', start: t, gameId: 'endfield'),
+        _ev(id: 'b', title: '终末地 2.0 版本前瞻特别节目', start: t, gameId: 'endfield'),
+        _ev(id: 'c', title: '2.0 版本前瞻特别节目', start: t, gameId: 'endfield'),
+      ];
+      expect(dedupeEvents(events), hasLength(1));
+    });
+
+    test('时间不同的同标题事件不合并', () {
+      final a = _ev(id: 'a', title: '活动开启', start: DateTime.parse('2026-11-21T10:00:00+08:00'));
+      final b = _ev(id: 'b', title: '活动开启', start: DateTime.parse('2026-11-21T20:00:00+08:00'));
+      expect(dedupeEvents([a, b]), hasLength(2));
+    });
   });}

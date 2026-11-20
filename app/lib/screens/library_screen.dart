@@ -11,9 +11,12 @@ import 'game_detail_page.dart';
 
 /// 游戏库：搜索 + 每款游戏的官号绑定入口。
 class LibraryScreen extends StatelessWidget {
-  const LibraryScreen({super.key, required this.state});
+  const LibraryScreen({super.key, required this.state, required this.onReschedule});
 
   final AppState state;
+
+  /// 单号刷新后重排提醒（由外壳传入）
+  final Future<void> Function() onReschedule;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +36,10 @@ class LibraryScreen extends StatelessWidget {
               const EmptyState(title: '游戏库是空的', body: '点右上角的 ＋ 添加游戏。', icon: Icons.add_circle_outline)
             else
               for (var gi = 0; gi < games.length; gi++) ...[
-                FadeSlideIn(index: gi, child: _GameCard(game: games[gi], state: state)),
+                FadeSlideIn(
+                    index: gi,
+                    child: _GameCard(game: games[gi], state: state, onReschedule: onReschedule),
+                  ),
                 const SizedBox(height: 10),
               ],
           ],
@@ -44,10 +50,11 @@ class LibraryScreen extends StatelessWidget {
 }
 
 class _GameCard extends StatelessWidget {
-  const _GameCard({required this.game, required this.state});
+  const _GameCard({required this.game, required this.state, required this.onReschedule});
 
   final Game game;
   final AppState state;
+  final Future<void> Function() onReschedule;
 
   /// 长按直接给移除入口：设置抽屉里的按钮要翻到底才看得到
   Future<void> _confirmRemove(BuildContext context) async {
@@ -84,7 +91,9 @@ class _GameCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => GameDetailPage(state: state, game: game)),
+          MaterialPageRoute(
+            builder: (_) => GameDetailPage(state: state, game: game, onReschedule: onReschedule),
+          ),
         ),
         onLongPress: () => _confirmRemove(context),
         child: Padding(

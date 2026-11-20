@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../model.dart';
 
 /// 一次「官方改了公告、导致时间变化」的字段级变化
@@ -180,9 +182,34 @@ String titleCore(String title) {
   );
 }
 
-/// 同一款游戏、同一类型、同一时间点、标题核心相同 → 视作同一条事件
+/// 已知游戏的全称与简称：做标题指纹时先去掉，
+/// 避免「终末地 2.0 前瞻」与「2.0 前瞻」被判成两条。
+const _gameNameTokens = <String>[
+  '明日方舟终末地', '明日方舟', '终末地', '绝区零', '异环', '方舟',
+];
+
+/// 标题指纹：去游戏名、去标点空白、去泛用词，只留能区分「是不是同一件事」的部分。
+///
+/// 同一场前瞻常以三种写法被抓回来（「2.0 版本揭幕前瞻特别节目」/
+/// 「终末地 2.0 版本前瞻特别节目」/「2.0 版本前瞻特别节目」），必须视为同一条。
+@visibleForTesting
+String titleFingerprint(String title) {
+  var s = title;
+  for (final name in _gameNameTokens) {
+    s = s.replaceAll(name, '');
+  }
+  s = s.replaceAll(RegExp(r'[^\u4e00-\u9fa5A-Za-z0-9]'), '').toLowerCase();
+  s = s.replaceAll(
+    RegExp('全新|揭幕|特别节目|前瞻|直播|版本|更新|活动|卡池|开启|开始|结束'
+        '|今日|即将|正式|上线|开放|截止|限时|复刻|预告'),
+    '',
+  );
+  return s;
+}
+
+/// 同一款游戏、同一类型、同一时间点、标题指纹相同 → 视作同一条事件
 String _dedupeKey(GameEvent e) =>
-    '${e.gameId}|${e.type}|${_stamp(e.start)}|${_stamp(e.end)}|${titleCore(e.title)}';
+    '${e.gameId}|${e.type}|${_stamp(e.start)}|${_stamp(e.end)}|${titleFingerprint(e.title)}';
 
 /// 去重：保留先出现的那条（刷新结果按时间序，先到的通常更完整）
 List<GameEvent> dedupeEvents(List<GameEvent> events) {

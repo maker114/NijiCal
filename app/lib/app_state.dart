@@ -104,10 +104,12 @@ class AppState extends ChangeNotifier {
       final loaded = (await Prefs.loadLiveEvents()).map(GameEvent.fromJson).toList();
       // 2.0.0 移除了官网采集通道，旧版本本机缓存的官网事件要清掉，否则会继续显示
       final cleaned = loaded.where((e) => !(e.sourceName ?? '').contains('官网公告')).toList();
-      if (cleaned.length != loaded.length) {
-        await Prefs.saveLiveEvents(cleaned.map((e) => e.toJson()).toList());
+      // 同一件事被不同标题写法重复录入过（历史数据）：载入时就去重并回写
+      final deduped = dedupeEvents(cleaned);
+      if (deduped.length != loaded.length) {
+        await Prefs.saveLiveEvents(deduped.map((e) => e.toJson()).toList());
       }
-      liveEvents = cleaned;
+      liveEvents = deduped;
       liveFetchedAt = await Prefs.loadLiveFetchedAt();
     } catch (_) {
       liveEvents = [];
