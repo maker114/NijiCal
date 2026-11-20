@@ -358,4 +358,32 @@ void main() {
       expect(const UpdateInfo(version: '', versionCode: 69, apkUrl: '', notes: '').versionCode > current, isTrue);
       expect(const UpdateInfo(version: '', versionCode: 67, apkUrl: '', notes: '').versionCode > current, isFalse);
     });
+  });
+  group('更新说明拆分', () {
+    test('按行拆开并去掉项目符号', () {
+      expect(
+        splitUpdateNotes('- 修复 A\n- 修复 B\n* 新增 C\n• 优化 D'),
+        ['修复 A', '修复 B', '新增 C', '优化 D'],
+      );
+    });
+
+    test('空行与首尾空白忽略', () {
+      expect(splitUpdateNotes('\n\n   \n- 只有一条  \n\n'), ['只有一条']);
+    });
+
+    test('单行过长且含分号时再拆成多条', () {
+      final items = splitUpdateNotes(
+        '- 第一件需要详细说明的事情，涉及若干处修改与回归验证；第二件同样需要说明的事情，也涉及多处改动',
+      );
+      expect(items, hasLength(2));
+      expect(items.first.startsWith('第一件'), isTrue);
+    });
+
+    test('较短的句子即使含分号也不拆', () {
+      expect(splitUpdateNotes('修复：A；B'), ['修复：A；B']);
+    });
+
+    test('空说明得到空列表', () {
+      expect(splitUpdateNotes('   \n  '), isEmpty);
+    });
   });}

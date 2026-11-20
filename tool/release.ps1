@@ -1,4 +1,4 @@
-﻿# 发版：改版本号 → 构建校验 → 打 tag 推送 → 由 GitHub Actions 构建并发布
+# 发版：改版本号 → 构建校验 → 打 tag 推送 → 由 GitHub Actions 构建并发布
 #
 # 用法：
 #   tool/release.ps1 -Version 2.15.0 -Code 72
@@ -48,8 +48,16 @@ if ($DryRun) {
 }
 
 # 3. 提交 + 打 tag + 推送（CI 会构建并发 Release，同时回写 latest.json）
-$msg = if ($Note) { "chore(release): $Version ($Code) — $Note" } else { "chore(release): $Version ($Code)" }
-Step "提交：$msg"
+# -Note 支持多行或用分号分隔；每条写成独立的「- 条目」放进提交正文，
+# CI 的清单脚本读正文 → App 更新页据此逐行显示。
+$noteLines = @()
+if ($Note) {
+  $noteLines = $Note -split "(`r?`n|;)" | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+}
+$subject = "chore(release): $Version ($Code)"
+$body = if ($noteLines.Count -gt 0) { "`n`n" + (($noteLines | ForEach-Object { "- $_" }) -join "`n") } else { '' }
+$msg = "$subject$body"
+Step "提交：$subject（$($noteLines.Count) 条更新说明）"
 git add app/pubspec.yaml app/lib/version.dart
 git commit -m $msg
 

@@ -178,3 +178,33 @@ class UpdateInfo {
 
   bool get usable => version.isNotEmpty && apkUrl.isNotEmpty;
 }
+
+/// 把清单里的 notes 拆成「一条一行」的列表。
+///
+/// 规则：
+/// 1. 先按换行拆；
+/// 2. 去掉行首的项目符号（- * • · –）和多余空白；
+/// 3. 单行过长且含「；」时，再按「；」拆成多条（避免一大段挤在一起）。
+List<String> splitUpdateNotes(String raw) {
+  final bullets = RegExp(r'^[-*•·–—]\s*');
+  final items = <String>[];
+
+  void add(String text) {
+    final cleaned = text.replaceFirst(bullets, '').trim();
+    if (cleaned.isEmpty) return;
+    final tooLong = cleaned.length > 42 && cleaned.contains('；');
+    if (tooLong) {
+      for (final part in cleaned.split('；')) {
+        final p = part.replaceFirst(bullets, '').trim();
+        if (p.isNotEmpty) items.add(p);
+      }
+    } else {
+      items.add(cleaned);
+    }
+  }
+
+  for (final line in raw.split(RegExp(r'\r?\n'))) {
+    add(line);
+  }
+  return items;
+}

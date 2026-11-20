@@ -161,7 +161,7 @@ class _UpdatePageState extends State<UpdatePage> {
                     ),
                     if (latest.notes.trim().isNotEmpty) ...[
                       const SizedBox(height: 10),
-                      Text(latest.notes, style: theme.textTheme.bodySmall),
+                      _UpdateNotes(notes: latest.notes),
                     ],
                     if (hasUpdate) ...[
                       const SizedBox(height: 14),
@@ -221,6 +221,43 @@ class _UpdatePageState extends State<UpdatePage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 更新说明：按行拆成条目，每条单独一行（长句再按「；」拆）
+class _UpdateNotes extends StatelessWidget {
+  const _UpdateNotes({required this.notes});
+
+  final String notes;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodySmall?.copyWith(height: 1.55);
+    final items = splitUpdateNotes(notes);
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 5),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('· ', style: style),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: style,
+                    softWrap: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

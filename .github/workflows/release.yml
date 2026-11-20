@@ -126,7 +126,11 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set +e
-          export NOTES="$(git log -1 --pretty=%s)"
+          # 优先用提交正文（release.ps1 会把每条更新说明写成「- 条目」），没有正文退回标题
+          export NOTES="$(git log -1 --pretty=%b)"
+          if [ -z "$(echo "$NOTES" | tr -d '[:space:]')" ]; then
+            export NOTES="$(git log -1 --pretty=%s)"
+          fi
           set -x
           {
             python3 .github/scripts/update_manifest.py
