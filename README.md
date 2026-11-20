@@ -39,6 +39,15 @@
 - 大模型 key 只存在本机私有目录；
 - 除了「B 站」和「你自己配置的大模型接口」，App 不连接任何服务器。
 
+## 界面
+
+| 列表 | 月历 |
+| :---: | :---: |
+| ![列表](app/docs/shot-calendar.png) | ![月历](app/docs/shot-calendar-grid.png) |
+
+| 游戏库 | 设置 | 事件详情 |
+| :---: | :---: | :---: |
+| ![游戏库](app/docs/shot-library.png) | ![设置](app/docs/shot-settings.png) | ![详情](app/docs/shot-detail.png) |
 ## 主要功能
 
 - 月历 + 圆环标记，列表/日历两种视图；
