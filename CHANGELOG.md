@@ -3,7 +3,7 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号与 `app/pubspec.yaml` 同源。
 分类只用：新增 / 变更 / 修复 / 移除。
 
-## [Unreleased]
+## [2.17.0] - 2026-11-20
 
 ### 修复
 - **同一件事被重复录入**：去重键原来用 `titleCore`，只去掉「版本/活动」等泛用词，
