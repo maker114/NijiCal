@@ -272,4 +272,20 @@ abstract class Prefs {
   static Future<void> saveManualEvents(List<Map<String, dynamic>> events) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setStringList(_manualEventsKey, [for (final e in events) jsonEncode(e)]);
+  }
+  // 自动刷新的最近一次结果（给设置页显示，便于判断后台到底跑没跑）
+  static const _autoResultKey = 'nijical.auto.lastResult';
+  static const _autoResultAtKey = 'nijical.auto.lastResultAt';
+
+  static Future<({String text, DateTime? at})> loadAutoResult() async {
+    final sp = await SharedPreferences.getInstance();
+    final text = sp.getString(_autoResultKey) ?? '';
+    final at = DateTime.tryParse(sp.getString(_autoResultAtKey) ?? '');
+    return (text: text, at: at);
+  }
+
+  static Future<void> saveAutoResult(String text) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_autoResultKey, text);
+    await sp.setString(_autoResultAtKey, DateTime.now().toIso8601String());
   }}

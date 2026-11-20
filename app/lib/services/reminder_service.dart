@@ -63,7 +63,7 @@ abstract class ReminderService {
         final fireAt = event.due.add(Duration(minutes: minutes));
         if (fireAt.isBefore(DateTime.now())) continue;
 
-        final id = _idFor(event.id, minutes);
+        final id = notificationIdFor(event.id, minutes);
         final when = fireAt.toUtc();
         await _plugin.zonedSchedule(
           id: id,
@@ -141,10 +141,19 @@ abstract class ReminderService {
     return '$v 分钟后';
   }
 
-  /// 事件 id 稳定映射到通知 id，避免重复排期时冲突
-  static int _idFor(String eventId, int minutes) {
-    final digits = eventId.replaceAll(RegExp(r'\D'), '');
-    final base = digits.isEmpty ? eventId.hashCode : int.tryParse(digits) ?? 0;
-    return (base * 10 + (minutes.abs() % 10)).abs() % 0x7FFFFFFF;
+  /// 事件 id + 提前量 → 通知 id。
+  ///
+  /// 必须把「完整 id」和「提前量」都算进去：
+  /// - 之前只取 id 里的数字，`b123-start` 与 `b123-end` 会撞成同一个 id；
+  /// - 之前提前量只取分钟个位，-1440 与 -60 都变成 0，同一事件的两条提醒互相覆盖。
+  @visibleForTesting
+  static int notificationIdFor(String eventId, int minutes) {
+    // FNV-1a 32 位，稳定且分布均匀（不依赖 Dart 的 hashCode 实现）
+    var hash = 0x811C9DC5;
+    for (final unit in '$eventId#$minutes'.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0xFFFFFFFF;
+    }
+    return hash % 0x7FFFFFFF;
   }
 }

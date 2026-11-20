@@ -44,9 +44,27 @@ class NormalizedEvent {
 }
 
 class LlmOutcome {
-  const LlmOutcome({this.event, this.error});
+  const LlmOutcome({this.event, this.error, this.retryable = false});
   final NormalizedEvent? event;
   final String? error;
+
+  /// 是否值得重试（网络抖动、超时、429 限流、5xx）；
+  /// 模型输出不合格属于内容问题，重试也没用，不算可重试。
+  final bool retryable;
+
+  /// 按错误信息判断是否可重试；抽成静态方法便于单测
+  static bool isRetryableMessage(String message) {
+    final m = message.toLowerCase();
+    return m.contains('timeout') ||
+        m.contains('timed out') ||
+        m.contains('socket') ||
+        m.contains('connection') ||
+        m.contains('http 429') ||
+        m.contains('http 500') ||
+        m.contains('http 502') ||
+        m.contains('http 503') ||
+        m.contains('http 504');
+  }
 }
 
 /// B 站动态 → 结构化事件。
@@ -110,6 +128,10 @@ $text
    不要把整段正文塞进 title。''';
   }
 
+  /// 解析一条动态。
+  ///
+  /// 网络类失败（超时 / 429 / 5xx / 连接断）自动重试一次：
+  /// 一次刷新动辄十几条，偶发抖动不该直接丢事件。
   static Future<LlmOutcome> normalize({
     required String text,
     required String author,
@@ -121,6 +143,36 @@ $text
     if (!config.ready) return const LlmOutcome(error: '未配置大模型 key');
     if (text.trim().length < 8) return const LlmOutcome(error: '正文过短');
 
+    var result = await _requestOnce(
+      text: text,
+      author: author,
+      publishedAt: publishedAt,
+      config: config,
+      fallbackGameId: fallbackGameId,
+      timeout: timeout,
+    );
+    if (result.retryable) {
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      result = await _requestOnce(
+        text: text,
+        author: author,
+        publishedAt: publishedAt,
+        config: config,
+        fallbackGameId: fallbackGameId,
+        timeout: timeout,
+      );
+    }
+    return result;
+  }
+
+  static Future<LlmOutcome> _requestOnce({
+    required String text,
+    required String author,
+    required DateTime publishedAt,
+    required LlmConfig config,
+    String? fallbackGameId,
+    required Duration timeout,
+  }) async {
     final client = HttpClient()..connectionTimeout = timeout;
     try {
       final uri = Uri.parse('${config.baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions');
@@ -144,7 +196,12 @@ $text
       final response = await request.close().timeout(timeout);
       final body = await response.transform(utf8.decoder).join().timeout(timeout);
       if (response.statusCode != 200) {
-        return LlmOutcome(error: 'HTTP ${response.statusCode}: ${body.length > 120 ? body.substring(0, 120) : body}');
+        final message = 'HTTP ${response.statusCode}: '
+            '${body.length > 120 ? body.substring(0, 120) : body}';
+        return LlmOutcome(
+          error: message,
+          retryable: LlmOutcome.isRetryableMessage(message),
+        );
       }
 
       final decoded = jsonDecode(body);
@@ -152,7 +209,8 @@ $text
       if (content == null) return const LlmOutcome(error: '响应里没有 content');
       return parse(content, fallbackGameId: fallbackGameId);
     } catch (e) {
-      return LlmOutcome(error: e.toString().split('\n').first);
+      final message = e.toString().split('\n').first;
+      return LlmOutcome(error: message, retryable: LlmOutcome.isRetryableMessage(message));
     } finally {
       client.close(force: true);
     }

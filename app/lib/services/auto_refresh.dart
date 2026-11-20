@@ -74,6 +74,7 @@ class AutoRefresh {
   static Future<HeadlessResult> runNow({bool mark = true}) async {
     final slot = await dueSlot();
     final result = await HeadlessRefresh.run();
+    await Prefs.saveAutoResult(result.message);
     if (mark && slot != null) await Prefs.saveAutoLastSlot(slot);
     return result;
   }
@@ -90,6 +91,7 @@ class AutoRefresh {
       if (slot == null) return;
       await Prefs.saveAutoLastSlot(slot);
       final result = await HeadlessRefresh.run();
+      await Prefs.saveAutoResult(result.message);
       await ReminderService.notifyNow(
         title: result.ok ? 'NijiCal 自动刷新完成' : 'NijiCal 自动刷新失败',
         body: result.message,
@@ -118,6 +120,7 @@ void callbackDispatcher() {
 
     await Prefs.saveAutoLastSlot(slot);
     final result = await HeadlessRefresh.run();
+    await Prefs.saveAutoResult(result.message);
     try {
       await ReminderService.notifyNow(
         title: result.ok ? 'NijiCal 定时刷新完成' : 'NijiCal 定时刷新失败',

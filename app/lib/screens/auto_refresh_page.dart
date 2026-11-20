@@ -23,6 +23,8 @@ class _AutoRefreshPageState extends State<AutoRefreshPage> {
   bool ignoringBattery = false;
   bool busy = false;
   String? message;
+  String lastResult = '';
+  DateTime? lastResultAt;
 
   @override
   void initState() {
@@ -34,12 +36,15 @@ class _AutoRefreshPageState extends State<AutoRefreshPage> {
     final e = await Prefs.loadAutoEnabled();
     final t = await Prefs.loadAutoTimes();
     final last = await Prefs.loadAutoLastSlot();
+    final res = await Prefs.loadAutoResult();
     final ignoring = await PowerHelper.isIgnoringBattery();
     if (!mounted) return;
     setState(() {
       enabled = e;
       times = t;
       lastSlot = last;
+      lastResult = res.text;
+      lastResultAt = res.at;
       ignoringBattery = ignoring;
     });
   }
@@ -219,6 +224,20 @@ class _AutoRefreshPageState extends State<AutoRefreshPage> {
                     lastSlot == null ? '还没自动跑过' : '上次自动运行：$lastSlot',
                     style: theme.textTheme.bodySmall,
                   ),
+                  if (lastResult.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '结果：$lastResult'
+                      '${lastResultAt == null ? '' : '（${lastResultAt!.month} 月 ${lastResultAt!.day} 日 '
+                          '${lastResultAt!.hour.toString().padLeft(2, '0')}:'
+                          '${lastResultAt!.minute.toString().padLeft(2, '0')}）'}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: lastResult.contains('失败') || lastResult.contains('跳过')
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,

@@ -322,7 +322,16 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         for (final e in widget.state.liveEvents)
           if (widget.onlyGameId == null || e.gameId == widget.onlyGameId) e.id,
       };
-      final changes = await widget.state.applyLive(events.values.toList(), onlyGame: widget.onlyGameId);
+      // 本轮抓取失败的号：全量刷新时保留它们原有的事件，避免风控一次就清空日程
+      final failedGames = {
+        for (final entry in stats.entries)
+          if (entry.value.error != null) entry.key,
+      };
+      final changes = await widget.state.applyLive(
+        events.values.toList(),
+        onlyGame: widget.onlyGameId,
+        preserveGameIds: failedGames,
+      );
       final afterEvents = widget.state.liveEvents
           .where((e) => widget.onlyGameId == null || e.gameId == widget.onlyGameId)
           .toList();
@@ -375,8 +384,12 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           ? '｜${stored.length} 条全是截止类事件，已被「显示截止事件」开关隐藏'
           : '';
       currentGameId = null;
-      _finish('已获取完成，共入库 $storedCount 条，其中新增 $newCount 条，删除 $removedCount 条'
-          '${changes.isEmpty ? '' : '；改期 ${changes.length} 项'}$hiddenNote');
+      // 失败账号保留旧事件的提示
+      final failNote = failedGames.isEmpty
+          ? ''
+          : '｜${failedGames.length} 个号失败，已保留其原有日程';
+      _finish('拉取完成，入库 $storedCount 条，新增 $newCount 条，删除 $removedCount 条'
+          '${changes.isEmpty ? '' : '；改期 ${changes.length} 项'}$failNote$hiddenNote');
     } catch (e) {
       _finish('失败：${'$e'.split('\n').first}');
     }

@@ -115,8 +115,33 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 内置数据 + 刷新结果的合并视图（同源 URL 以刷新结果为准）
+  /// 内置数据 + 刷新结果 + 手动日程的合并视图（同源 URL 以刷新结果为准）
+  ///
+  /// 一次 build 里会被调用很多次（筛选、计数、列表），所以按「数据指纹」缓存。
+  List<GameEvent>? _allEventsCache;
+  Object? _allEventsKey;
+
+  Object get _allEventsSignature => Object.hash(
+        identityHashCode(liveEvents),
+        liveEvents.length,
+        identityHashCode(manualEvents),
+        manualEvents.length,
+        identityHashCode(data),
+        customGames.length,
+        hiddenGames.length,
+      );
+
   List<GameEvent> get allEvents {
+    final key = _allEventsSignature;
+    final cached = _allEventsCache;
+    if (cached != null && _allEventsKey == key) return cached;
+    final result = _computeAllEvents();
+    _allEventsCache = result;
+    _allEventsKey = key;
+    return result;
+  }
+
+  List<GameEvent> _computeAllEvents() {
     final bundled = data?.events ?? const <GameEvent>[];
     final List<GameEvent> merged;
     if (liveEvents.isEmpty) {
@@ -136,18 +161,24 @@ class AppState extends ChangeNotifier {
 
   /// 写入刷新结果；返回这次检测到的改期（没有就是空列表）。
   /// [onlyGame] 非空时只替换该游戏的事件，其它游戏保持原样。
-  Future<List<EventChange>> applyLive(List<GameEvent> events, {String? onlyGame}) async {
+  /// [preserveGameIds]：本轮抓取失败的游戏 id。全量刷新时这些游戏的旧事件要保留，
+  /// 否则一个号被风控就会把它名下的日程全部清空（曾经的真实缺陷）。
+  Future<List<EventChange>> applyLive(
+    List<GameEvent> events, {
+    String? onlyGame,
+    Set<String> preserveGameIds = const {},
+  }) async {
     final now = DateTime.now();
     final base = onlyGame == null
         ? liveEvents
         : liveEvents.where((e) => e.gameId != onlyGame).toList();
     final merged = mergeEvents(base, events, now);
-    // 全量刷新时不留旧事件（官方删掉的动态不该留在日历里）；
-    // 单刷只保留「其它游戏」的条目。
+    // 全量刷新时丢弃旧事件（官方删掉的动态不该留在日历里），
+    // 但「本轮抓取失败的游戏」和「单刷时的其它游戏」要保留。
     final freshIds = events.map((e) => e.id).toSet();
-    final kept = onlyGame == null
-        ? const <GameEvent>[]
-        : base.where((e) => !freshIds.contains(e.id));
+    final kept = base.where((e) =>
+        !freshIds.contains(e.id) &&
+        (onlyGame != null || preserveGameIds.contains(e.gameId))).toList();
 
     // 游戏已不在库里的事件不再保留（删除游戏后残留的孤儿数据）
     final known = gameMap;

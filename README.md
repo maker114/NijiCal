@@ -4,7 +4,7 @@
 
 > **一句话**：卡池结束、活动关闭、兑换码过期、补偿领取截止——一个页面看全，到期前提醒你。
 
-**当前版本：2.14.0**（见 [CHANGELOG.md](CHANGELOG.md)）
+**当前版本**：见 [CHANGELOG.md](CHANGELOG.md) 顶部，以及 App 内「设置 → 检查更新」（清单 [updates/latest.json](updates/latest.json)）
 
 ## 仓库结构
 

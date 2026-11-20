@@ -66,32 +66,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
 
-    final children = <Widget>[];
+    // 行内容按需构建（ListView.builder）：事件多时不必一次性把所有行和动画状态都建出来
+    final rows = <Widget>[];
     var rowIndex = 0;
     String? lastDay;
     for (final event in upcoming) {
       final day = dayPartOf(event.due);
       if (day != lastDay) {
-        children.add(_DayHeader(day: day));
+        rows.add(_DayHeader(day: day));
         lastDay = day;
       }
-      children.add(_EventTile(event: event, game: games[event.gameId], state: widget.state, index: rowIndex++));
+      rows.add(_EventTile(event: event, game: games[event.gameId], state: widget.state, index: rowIndex++));
     }
 
-    if (expired.isNotEmpty) children.add(_ExpiredSection(events: expired, games: games, state: widget.state));
+    if (expired.isNotEmpty) rows.add(_ExpiredSection(events: expired, games: games, state: widget.state));
 
-    return ListView(
+    return ListView.builder(
       padding: const EdgeInsets.only(bottom: 24),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          child: Text(
-            upcoming.isEmpty ? '没有即将到来的日程' : '接下来 ${upcoming.length} 条',
-            style: theme.textTheme.labelSmall,
-          ),
-        ),
-        ...children,
-      ],
+      itemCount: rows.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(
+              upcoming.isEmpty ? '没有即将到来的日程' : '接下来 ${upcoming.length} 条',
+              style: theme.textTheme.labelSmall,
+            ),
+          );
+        }
+        return rows[index - 1];
+      },
     );
   }
 

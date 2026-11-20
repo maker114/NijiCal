@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nijical/app_state.dart';
@@ -6,7 +8,10 @@ import 'package:nijical/main.dart';
 import 'package:nijical/model.dart';
 import 'package:nijical/services/update_service.dart';
 import 'package:nijical/services/event_diff.dart';
+import 'package:nijical/services/llm_normalizer.dart';
+import 'package:nijical/services/reminder_service.dart';
 import 'package:nijical/services/uid.dart';
+import 'package:nijical/version.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 GameEvent _ev({
@@ -385,5 +390,95 @@ void main() {
 
     test('空说明得到空列表', () {
       expect(splitUpdateNotes('   \n  '), isEmpty);
+    });
+  });
+  group('提醒通知 id', () {
+    test('同一事件的两个提前量不会撞车', () {
+      final a = ReminderService.notificationIdFor('b123-end', -1440);
+      final b = ReminderService.notificationIdFor('b123-end', -60);
+      expect(a, isNot(b));
+    });
+
+    test('开始/结束兄弟事件不会撞车', () {
+      final start = ReminderService.notificationIdFor('b123-start', -60);
+      final end = ReminderService.notificationIdFor('b123-end', -60);
+      expect(start, isNot(end));
+    });
+
+    test('同样的输入始终得到同样的 id（重排提醒可覆盖旧的）', () {
+      expect(
+        ReminderService.notificationIdFor('manual-1763000000000', -1440),
+        ReminderService.notificationIdFor('manual-1763000000000', -1440),
+      );
+    });
+
+    test('id 落在 Android 可接受的正整数范围', () {
+      for (final id in ['b1', 'manual-1', '很长的中文-id-#@!']) {
+        for (final minutes in [-1440, -60, 0, 30]) {
+          final v = ReminderService.notificationIdFor(id, minutes);
+          expect(v, inInclusiveRange(0, 0x7FFFFFFF));
+        }
+      }
+    });
+  });
+
+  group('大模型失败重试判定', () {
+    test('超时与网络错误算可重试', () {
+      expect(LlmOutcome.isRetryableMessage('TimeoutException after 0:00:25'), isTrue);
+      expect(LlmOutcome.isRetryableMessage('SocketException: Connection reset'), isTrue);
+      expect(LlmOutcome.isRetryableMessage('HTTP 503: busy'), isTrue);
+      expect(LlmOutcome.isRetryableMessage('HTTP 429: rate limited'), isTrue);
+    });
+
+    test('鉴权与内容错误不重试', () {
+      expect(LlmOutcome.isRetryableMessage('HTTP 401: unauthorized'), isFalse);
+      expect(LlmOutcome.isRetryableMessage('模型返回的不是 JSON'), isFalse);
+      expect(LlmOutcome.isRetryableMessage('正文过短'), isFalse);
+    });
+  });
+
+  group('刷新失败游戏的旧事件要保留', () {
+    test('全量刷新时，失败游戏的事件不丢', () async {
+      SharedPreferences.setMockInitialValues({});
+      final state = AppState();
+      state.data = NijiData(
+        dataMode: 'live',
+        sampleNotice: '',
+        builtAt: '2026-11-20T00:00:00',
+        typeOrder: const ['版本更新'],
+        alarms: const {},
+        games: const [
+          Game(id: 'zzz', name: '绝区零', short: '绝区零', accent: Color(0xFFB58F6E)),
+          Game(id: 'arknights', name: '明日方舟', short: '方舟', accent: Color(0xFF7FA38F)),
+        ],
+        events: const [],
+      );
+      final now = DateTime.now();
+      final oldZzz = _ev(id: 'zzz-1', title: '旧日程', start: now, gameId: 'zzz');
+      final oldArk = _ev(id: 'ark-1', title: '方舟旧日程', start: now, gameId: 'arknights');
+      state.liveEvents = [oldZzz, oldArk];
+
+      // 本轮只抓到绝区零的新事件，arknights 抓取失败
+      final fresh = _ev(id: 'zzz-2', title: '新日程', start: now, gameId: 'zzz');
+      await state.applyLive([fresh], preserveGameIds: {'arknights'});
+
+      final ids = state.liveEvents.map((e) => e.id).toSet();
+      expect(ids.contains('zzz-2'), isTrue);
+      expect(ids.contains('ark-1'), isTrue, reason: '失败游戏的旧事件应保留');
+      expect(ids.contains('zzz-1'), isFalse, reason: '成功游戏的旧事件应被替换');
+    });
+  });
+  group('版本号只允许一个真相', () {
+    test('pubspec.yaml 与 version.dart 的版本/构建号一致', () {
+      final pubspec = File('pubspec.yaml').readAsStringSync();
+      final line = RegExp(r'^version:\s*(\S+)$', multiLine: true)
+          .firstMatch(pubspec)
+          ?.group(1);
+      expect(line, isNotNull, reason: 'pubspec.yaml 里缺少 version:');
+      final parts = line!.split('+');
+      expect(parts, hasLength(2), reason: 'version 必须写成 X.Y.Z+N');
+
+      expect(parts[0], kAppVersion, reason: 'pubspec 版本名与 kAppVersion 不一致');
+      expect(int.parse(parts[1]), kAppVersionCode, reason: 'pubspec 构建号与 kAppVersionCode 不一致');
     });
   });}
