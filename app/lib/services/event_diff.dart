@@ -215,18 +215,68 @@ String titleFingerprint(String title) {
   return s;
 }
 
-/// 同一款游戏、同一类型、同一时间点、标题指纹相同 → 视作同一条事件
-String _dedupeKey(GameEvent e) =>
-    '${e.gameId}|${e.type}|${_stamp(e.start)}|${_stamp(e.end)}|${titleFingerprint(e.title)}';
-
-/// 去重：保留先出现的那条（刷新结果按时间序，先到的通常更完整）
 List<GameEvent> dedupeEvents(List<GameEvent> events) {
-  final seen = <String>{};
   final out = <GameEvent>[];
   for (final event in events) {
-    if (seen.add(_dedupeKey(event))) out.add(event);
+    final idx = out.indexWhere((kept) => _sameEvent(kept, event));
+    if (idx < 0) {
+      out.add(event);
+    } else {
+      out[idx] = _preferComplete(out[idx], event);
+    }
   }
   return out;
+}
+
+/// 同一条事件的不同解析结果：游戏、类型相同，开始时间相差不超过 5 分钟，
+/// 且标题指纹够像（相等 / 互相包含 / 二元组相似度 ≥ 0.65）。
+///
+/// 不再要求 end 完全一致 —— 模型有时给出结束时间、有时给 null，
+/// 之前就是因此把「3.4 版本上线」判成了两条。
+bool _sameEvent(GameEvent a, GameEvent b) {
+  if (a.gameId != b.gameId || a.type != b.type) return false;
+  final sa = a.start;
+  final sb = b.start;
+  if (sa == null || sb == null) return false;
+  if (sa.difference(sb).inMinutes.abs() > 5) return false;
+  return _titleSimilar(titleFingerprint(a.title), titleFingerprint(b.title));
+}
+
+/// 标题指纹相似度：相等、互相包含，或字符二元组 Jaccard ≥ 0.65
+@visibleForTesting
+bool titleSimilar(String a, String b) => _titleSimilar(a, b);
+
+bool _titleSimilar(String a, String b) {
+  // 标题全是泛用词（如「版本更新上线」）时指纹为空：同游戏同类型同时间即视为同一条
+  if (a.isEmpty || b.isEmpty) return a.isEmpty && b.isEmpty;
+  if (a == b) return true;
+  if (a.contains(b) || b.contains(a)) return true;
+  if (a.length < 4 || b.length < 4) return false;
+
+  final ga = _bigrams(a);
+  final gb = _bigrams(b);
+  if (ga.isEmpty || gb.isEmpty) return false;
+  final inter = ga.intersection(gb).length;
+  final union = ga.union(gb).length;
+  return union > 0 && inter / union >= 0.65;
+}
+
+Set<String> _bigrams(String s) {
+  final out = <String>{};
+  for (var i = 0; i + 1 < s.length; i += 1) {
+    out.add(s.substring(i, i + 2));
+  }
+  return out;
+}
+
+/// 合并重复项时留下信息更全的那条（有区间 > 有摘要 > 标题更长）
+GameEvent _preferComplete(GameEvent a, GameEvent b) {
+  int score(GameEvent e) =>
+      (e.end != null ? 4 : 0) +
+      (e.displayEnd != null ? 4 : 0) +
+      ((e.summary ?? '').isNotEmpty ? 2 : 0) +
+      (e.title.length >= 6 ? 1 : 0);
+  return score(b) > score(a) ? b : a;
 }
 
 /// 给拆分出来的「开始」事件补上区间：从同一条动态的 `-end` 兄弟事件里取结束时间。

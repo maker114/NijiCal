@@ -24,11 +24,12 @@ GameEvent _ev({
   EventStatus status = EventStatus.confirmed,
   String? hash,
   String gameId = 'arknights',
+  String? type,
 }) =>
     GameEvent(
       id: id,
       gameId: gameId,
-      type: end == null ? '活动开始' : '活动结束',
+      type: type ?? (end == null ? '活动开始' : '活动结束'),
       title: title,
       start: start,
       end: end,
@@ -519,6 +520,40 @@ void main() {
       expect(dedupeEvents(events), hasLength(1));
     });
 
+    test('同一事件仅结束时间不同 → 合并（模型有时给 null）', () {
+      final t = DateTime.parse('2026-12-02T00:00:00+08:00');
+      final a = _ev(
+        id: 'a',
+        title: '3.4 版本「长日终尽」上线',
+        start: t,
+        end: null,
+        gameId: 'zzz',
+        type: '版本更新',
+      );
+      final b = _ev(
+        id: 'b',
+        title: '3.4 版本「长日终尽」12 月 2 日上线',
+        start: t,
+        end: t.add(const Duration(hours: 6)),
+        gameId: 'zzz',
+        type: '版本更新',
+      );
+      expect(dedupeEvents([a, b]), hasLength(1));
+    });
+
+    test('开始时间差几分钟、标题相同 → 合并', () {
+      final t = DateTime.parse('2026-12-02T00:00:00+08:00');
+      final a = _ev(id: 'a', title: '版本更新上线', start: t, gameId: 'zzz');
+      final b = _ev(id: 'b', title: '版本更新上线', start: t.add(const Duration(minutes: 2)), gameId: 'zzz');
+      expect(dedupeEvents([a, b]), hasLength(1));
+    });
+
+    test('同一分钟的两个不同卡池 → 不合并', () {
+      final t = DateTime.parse('2026-11-27T11:00:00+08:00');
+      final a = _ev(id: 'a', title: '「挽昼」限定寻访开启', start: t, gameId: 'zzz');
+      final b = _ev(id: 'b', title: '「卡芙卡」限定寻访开启', start: t, gameId: 'zzz');
+      expect(dedupeEvents([a, b]), hasLength(2));
+    });
     test('时间不同的同标题事件不合并', () {
       final a = _ev(id: 'a', title: '活动开启', start: DateTime.parse('2026-11-21T10:00:00+08:00'));
       final b = _ev(id: 'b', title: '活动开启', start: DateTime.parse('2026-11-21T20:00:00+08:00'));
