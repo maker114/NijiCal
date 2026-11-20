@@ -6,6 +6,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../model.dart';
 import 'event_diff.dart';
+import 'llm_deduper.dart';
 import 'llm_normalizer.dart';
 import 'prefs.dart';
 
@@ -78,7 +79,9 @@ class HeadlessRefresh {
       final merged = mergeEvents(stored, fresh, startedAt);
       final ids = fresh.map((e) => e.id).toSet();
       final kept = stored.where((e) => !ids.contains(e.id));
-      final next = backfillRanges([...merged.events, ...kept]);
+      var next = backfillRanges([...merged.events, ...kept]);
+      // 语义去重：同一件事的多种说法只留一条（含历史遗留重复；模型不可用就退回纯规则）
+      next = backfillRanges(await LlmDeduper.dedupeSemantically(next, config: config));
       await Prefs.saveLiveEvents(next.map((e) => e.toJson()).toList());
       await Prefs.saveLiveFetchedAt(startedAt);
 

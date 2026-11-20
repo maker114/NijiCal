@@ -239,8 +239,34 @@ bool _sameEvent(GameEvent a, GameEvent b) {
   final sb = b.start;
   if (sa == null || sb == null) return false;
   if (sa.difference(sb).inMinutes.abs() > 5) return false;
-  return _titleSimilar(titleFingerprint(a.title), titleFingerprint(b.title));
+  if (_titleSimilar(titleFingerprint(a.title), titleFingerprint(b.title))) {
+    return true;
+  }
+  // 标题完全不同、但起止时间几乎一致：同一场活动被两条动态用不同说法各写了一遍
+  //（如「Zenless LIVE 2026」与「绝区零 2026 FES 布梦嘉年华」都是 11/27 00:00 → 11/29）。
+  final ea = _windowEnd(a);
+  final eb = _windowEnd(b);
+  if (ea != null &&
+      eb != null &&
+      ea.difference(eb).inMinutes.abs() <= 60 &&
+      // 再要求标题指纹至少共享一个二元组：同一活动的中英文两种叫法通常共享年份/版本号，
+      // 而「回音特刊研募计划」与「电子人之梦棋盘」这类同窗口但毫不相干的并行活动不会共享，
+      // 避免因为时间相同就误合并。
+      _sharesBigram(titleFingerprint(a.title), titleFingerprint(b.title))) {
+    return true;
+  }
+  return false;
 }
+
+bool _sharesBigram(String a, String b) {
+  if (a.isEmpty || b.isEmpty) return false;
+  final ga = _bigrams(a);
+  final gb = _bigrams(b);
+  return ga.intersection(gb).isNotEmpty;
+}
+
+/// 事件的有效结束时间：模型有时只给 displayEnd（拆出来的开始事件）
+DateTime? _windowEnd(GameEvent e) => e.end ?? e.displayEnd;
 
 /// 标题指纹相似度：相等、互相包含，或字符二元组 Jaccard ≥ 0.65
 @visibleForTesting

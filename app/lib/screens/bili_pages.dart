@@ -6,6 +6,7 @@ import '../app_state.dart';
 import '../model.dart';
 import '../services/bili_service.dart';
 import '../services/event_diff.dart';
+import '../services/llm_deduper.dart';
 import '../services/llm_normalizer.dart';
 import '../services/avatar_store.dart';
 import '../services/prefs.dart';
@@ -331,6 +332,8 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         events.values.toList(),
         onlyGame: widget.onlyGameId,
         preserveGameIds: failedGames,
+        // 入库前对最终列表做语义去重：连历史遗留的重复一起清掉
+        refine: (list) => LlmDeduper.dedupeSemantically(list, config: config),
       );
       final afterEvents = widget.state.liveEvents
           .where((e) => widget.onlyGameId == null || e.gameId == widget.onlyGameId)

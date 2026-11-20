@@ -165,10 +165,13 @@ class AppState extends ChangeNotifier {
   /// [onlyGame] 非空时只替换该游戏的事件，其它游戏保持原样。
   /// [preserveGameIds]：本轮抓取失败的游戏 id。全量刷新时这些游戏的旧事件要保留，
   /// 否则一个号被风控就会把它名下的日程全部清空（曾经的真实缺陷）。
+  /// [refine]：入库前对「最终事件列表」做一次后处理（目前用于大模型语义去重）。
+  /// 放在最终列表上而不是只看本轮新抓的，才能把历史遗留的重复一起清掉。
   Future<List<EventChange>> applyLive(
     List<GameEvent> events, {
     String? onlyGame,
     Set<String> preserveGameIds = const {},
+    Future<List<GameEvent>> Function(List<GameEvent> events)? refine,
   }) async {
     final now = DateTime.now();
     final base = onlyGame == null
@@ -184,10 +187,14 @@ class AppState extends ChangeNotifier {
 
     // 游戏已不在库里的事件不再保留（删除游戏后残留的孤儿数据）
     final known = gameMap;
-    liveEvents = backfillRanges([
+    var next = backfillRanges([
       ...merged.events,
       ...kept,
     ].where((e) => known.containsKey(e.gameId)).toList());
+    if (refine != null) {
+      next = backfillRanges(await refine(next));
+    }
+    liveEvents = next;
     liveFetchedAt = now;
     await Prefs.saveLiveEvents(liveEvents.map((e) => e.toJson()).toList());
     await Prefs.saveLiveFetchedAt(now);

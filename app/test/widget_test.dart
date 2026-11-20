@@ -548,6 +548,71 @@ void main() {
       expect(dedupeEvents([a, b]), hasLength(1));
     });
 
+    test('标题完全不同但起止时间一致 → 合并（同活动两种说法）', () {
+      final start = DateTime.parse('2026-11-27T00:00:00+08:00');
+      final end = DateTime.parse('2026-11-29T23:59:00+08:00');
+      final a = _ev(id: 'a', title: 'Zenless LIVE 2026', start: start, end: end, gameId: 'zzz', type: '活动开始');
+      final b = _ev(id: 'b', title: '绝区零 2026 FES 布梦嘉年华', start: start, end: end, gameId: 'zzz', type: '活动开始');
+      expect(dedupeEvents([a, b]), hasLength(1));
+    });
+
+    test('同窗口但毫不相干的并行活动 → 不合并', () {
+      final start = DateTime.parse('2026-11-27T00:00:00+08:00');
+      final end = DateTime.parse('2026-11-29T23:59:00+08:00');
+      final a = _ev(id: 'a', title: '回音特刊弧盘研募计划开启', start: start, end: end, gameId: 'zzz', type: '活动开始');
+      final b = _ev(id: 'b', title: '「电子人之梦」限定棋盘开启', start: start, end: end, gameId: 'zzz', type: '活动开始');
+      expect(dedupeEvents([a, b]), hasLength(2));
+    });
+
+    test('无结束时间但 displayEnd 一致、标题共享数字 → 合并', () {
+      final start = DateTime.parse('2026-11-27T00:00:00+08:00');
+      final displayEnd = DateTime.parse('2026-11-29T23:59:59+08:00');
+      final a = GameEvent(
+        id: 'a',
+        gameId: 'zzz',
+        type: '活动开始',
+        title: 'Zenless LIVE 2026',
+        start: start,
+        end: null,
+        displayEnd: displayEnd,
+        status: EventStatus.confirmed,
+        confidence: 90,
+        revisions: const [],
+      );
+      final b = GameEvent(
+        id: 'b',
+        gameId: 'zzz',
+        type: '活动开始',
+        title: '绝区零 2026 FES 布梦嘉年华',
+        start: start,
+        end: null,
+        displayEnd: displayEnd,
+        status: EventStatus.confirmed,
+        confidence: 90,
+        revisions: const [],
+      );
+      expect(dedupeEvents([a, b]), hasLength(1));
+    });
+    test('起止时间差很多的不同活动 → 不合并', () {
+      final start = DateTime.parse('2026-11-27T00:00:00+08:00');
+      final a = _ev(
+        id: 'a',
+        title: 'Zenless LIVE 2026',
+        start: start,
+        end: start.add(const Duration(days: 2)),
+        gameId: 'zzz',
+        type: '活动开始',
+      );
+      final b = _ev(
+        id: 'b',
+        title: '绝区零 2026 FES 布梦嘉年华',
+        start: start,
+        end: start.add(const Duration(days: 5)),
+        gameId: 'zzz',
+        type: '活动开始',
+      );
+      expect(dedupeEvents([a, b]), hasLength(2));
+    });
     test('同一分钟的两个不同卡池 → 不合并', () {
       final t = DateTime.parse('2026-11-27T11:00:00+08:00');
       final a = _ev(id: 'a', title: '「挽昼」限定寻访开启', start: t, gameId: 'zzz');
