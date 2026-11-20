@@ -10,6 +10,7 @@ import 'package:nijical/services/update_service.dart';
 import 'package:nijical/services/event_diff.dart';
 import 'package:nijical/services/llm_normalizer.dart';
 import 'package:nijical/services/reminder_service.dart';
+import 'package:nijical/screens/calendar_screen.dart';
 import 'package:nijical/services/uid.dart';
 import 'package:nijical/version.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -498,6 +499,16 @@ void main() {
       expect(a, isNot(b));
     });
 
+    test('同一版本更新的两种写法（含日期复述）指纹相同', () {
+      expect(
+        titleFingerprint('3.4 版本「长日终尽」上线'),
+        titleFingerprint('3.4版本「长日终尽」12月2日上线'),
+      );
+      expect(
+        titleFingerprint('3.4 版本「长日终尽」上线'),
+        titleFingerprint('3.4 版本「长日终尽」12月2日上午10点上线'),
+      );
+    });
     test('三条同事件的记录会被去重成一条', () {
       final t = DateTime.parse('2026-11-21T19:30:00+08:00');
       final events = [
@@ -512,5 +523,57 @@ void main() {
       final a = _ev(id: 'a', title: '活动开启', start: DateTime.parse('2026-11-21T10:00:00+08:00'));
       final b = _ev(id: 'b', title: '活动开启', start: DateTime.parse('2026-11-21T20:00:00+08:00'));
       expect(dedupeEvents([a, b]), hasLength(2));
+    });
+  });
+  group('日历圆环按事件占比', () {
+    test('同一天 A 两条、B 一条 → 颜色序列是 A,A,B（180°:90°:90°）', () {
+      SharedPreferences.setMockInitialValues({});
+      final state = AppState();
+      state.data = NijiData(
+        dataMode: 'live',
+        sampleNotice: '',
+        builtAt: '2026-11-20T00:00:00',
+        typeOrder: const ['版本更新'],
+        alarms: const {},
+        games: const [
+          Game(id: 'zzz', name: '绝区零', short: '绝区零', accent: Color(0xFFB58F6E)),
+          Game(id: 'arknights', name: '明日方舟', short: '方舟', accent: Color(0xFF7FA38F)),
+        ],
+        events: const [],
+      );
+      final future = DateTime.now().add(const Duration(days: 3));
+      final events = [
+        _ev(id: 'a1', title: '活动一开启', start: future, gameId: 'zzz'),
+        _ev(id: 'a2', title: '活动二开启', start: future, gameId: 'zzz'),
+        _ev(id: 'b1', title: '活动三开启', start: future, gameId: 'arknights'),
+      ];
+      final marks = marksByDate(events, state.gameMap, state);
+      final colors = marks[dayPartOf(future)]!;
+      expect(colors, hasLength(3), reason: '一条事件一段弧');
+      expect(colors[0], colors[1], reason: 'A 的两条应相邻同色');
+      expect(colors[2], isNot(colors[0]), reason: 'B 应是另一种颜色');
+    });
+
+    test('超过 12 条事件时截断到 12 段', () {
+      SharedPreferences.setMockInitialValues({});
+      final state = AppState();
+      state.data = NijiData(
+        dataMode: 'live',
+        sampleNotice: '',
+        builtAt: '2026-11-20T00:00:00',
+        typeOrder: const ['版本更新'],
+        alarms: const {},
+        games: const [
+          Game(id: 'zzz', name: '绝区零', short: '绝区零', accent: Color(0xFFB58F6E)),
+        ],
+        events: const [],
+      );
+      final future = DateTime.now().add(const Duration(days: 3));
+      final events = [
+        for (var i = 0; i < 20; i++)
+          _ev(id: 'e$i', title: '活动$i开启', start: future, gameId: 'zzz'),
+      ];
+      final marks = marksByDate(events, state.gameMap, state);
+      expect(marks[dayPartOf(future)], hasLength(12));
     });
   });}

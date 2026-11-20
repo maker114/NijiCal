@@ -198,10 +198,18 @@ String titleFingerprint(String title) {
   for (final name in _gameNameTokens) {
     s = s.replaceAll(name, '');
   }
+  // 标题里常把日期/时间复述一遍（「3.4 版本 12月2日 上线」与「3.4 版本上线」
+  // 是同一件事），时间已经在 start/end 里参与比较，这里把日期串去掉。
+  s = s.replaceAll(RegExp(r'\d{1,2}\s*月\s*\d{1,2}\s*[日号]'), '');
+  s = s.replaceAll(RegExp(r'\d{1,2}\s*月\s*\d{1,2}\s*[日号]?\s*(上午|下午|晚上|中午|凌晨)'), '');
+  // 只用 / 与 - 当日期分隔符：'2.0' 这种是版本号，不能被当成日期吃掉
+  s = s.replaceAll(RegExp(r'\d{1,2}\s*[/-]\s*\d{1,2}'), '');
+  s = s.replaceAll(RegExp(r'\d{1,2}\s*[:：]\s*\d{2}'), '');
+  s = s.replaceAll(RegExp(r'\d{1,2}\s*[点时](\s*\d{1,2}\s*分)?'), '');
   s = s.replaceAll(RegExp(r'[^\u4e00-\u9fa5A-Za-z0-9]'), '').toLowerCase();
   s = s.replaceAll(
     RegExp('全新|揭幕|特别节目|前瞻|直播|版本|更新|活动|卡池|开启|开始|结束'
-        '|今日|即将|正式|上线|开放|截止|限时|复刻|预告'),
+        '|今日|即将|正式|上线|开放|截止|限时|复刻|预告|上午|下午|晚上|中午|凌晨'),
     '',
   );
   return s;
