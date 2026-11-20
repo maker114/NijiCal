@@ -1,7 +1,7 @@
 {
-  "version": "2.16.3",
-  "versionCode": 80,
-  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.16.3/NijiCal-2.16.3.apk",
+  "version": "2.17.0",
+  "versionCode": 81,
+  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.17.0/NijiCal-2.17.0.apk",
   "publishedAt": "2026-11-20",
-  "notes": "- 修提醒通知ID撞车，截止事件恢复两条提醒\n- 修刷新失败清空账号日程\n- 大模型网络错误自动重试\n- 自动刷新结果可在设置页查看\n- 新增日常CI与截图"
+  "notes": "- 日历圆环按事件条数占比分段（A两条B/C各一条=180/90/90）\n- 新增单游戏独立刷新，只拉一个官号\n- 修同一事件重复录入：标题指纹+容差聚类+大模型语义去重\n- 版本号一致性每日CI兜底"
 }
