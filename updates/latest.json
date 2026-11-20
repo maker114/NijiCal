@@ -1,7 +1,7 @@
 {
-  "version": "2.16.2",
-  "versionCode": 79,
-  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.16.2/NijiCal-2.16.2.apk",
+  "version": "2.16.3",
+  "versionCode": 80,
+  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.16.3/NijiCal-2.16.3.apk",
   "publishedAt": "2026-11-20",
-  "notes": "更新说明改为逐条换行显示\n发布链路支持一次写多条更新说明\n新增 5 个拆分规则单测\n修复 release.ps1 编码导致的解析错误"
+  "notes": "- 修提醒通知ID撞车，截止事件恢复两条提醒\n- 修刷新失败清空账号日程\n- 大模型网络错误自动重试\n- 自动刷新结果可在设置页查看\n- 新增日常CI与截图"
 }
