@@ -52,7 +52,7 @@ if ($DryRun) {
 # CI 的清单脚本读正文 → App 更新页据此逐行显示。
 $noteLines = @()
 if ($Note) {
-  $noteLines = $Note -split "(`r?`n|;)" | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+  $noteLines = $Note -split "`r?`n|;" | ForEach-Object { $_.Trim() } | Where-Object { $_ }
 }
 $subject = "chore(release): $Version ($Code)"
 $body = if ($noteLines.Count -gt 0) { "`n`n" + (($noteLines | ForEach-Object { "- $_" }) -join "`n") } else { '' }
