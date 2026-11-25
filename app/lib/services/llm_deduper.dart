@@ -38,18 +38,21 @@ class DedupeResult {
 ///
 /// 所以不再只把「同游戏同类型、开始时间相差 ≤10 分钟」的候选送给模型，而是把
 /// 当轮入库后的全部事件一次性交给模型审核，一次刷新通常只多一次调用。
-/// 模型按游戏与「开始/结束」方向再做一次硬校验（防止误合并并行的活动、把配套的
-/// 开始与结束两条并掉），失败或不可用时退回纯规则。
+/// 模型按游戏、开始/结束方向、类型、标题相似度与时间窗再做一次硬校验，
+/// 防止误合并并行的活动、同一版本的上线/维护公告，或配套的开始/结束两条；
+/// 失败或不可用时退回纯规则。
 class LlmDeduper {
   /// 单次请求最多送多少条。超过才按游戏拆成多片（同一款游戏不会被拆开）。
   @visibleForTesting
   static const maxItemsPerCall = 120;
 
   /// 审核整份日程列表，返回去重后的列表。
+  /// [onMerge] 每合并一条回调一次，用于诊断时追溯合并了哪两条。
   static Future<DedupeResult> audit(
     List<GameEvent> events, {
     required LlmConfig config,
     Duration timeout = const Duration(seconds: 60),
+    void Function(String message)? onMerge,
   }) async {
     if (events.length < 2) {
       return DedupeResult(events: events, removed: 0);
@@ -69,7 +72,7 @@ class LlmDeduper {
       if (ask.groups == null) {
         return _fallback(events, ask.error ?? '大模型审核失败');
       }
-      for (final local in _droppedIndexes(chunk, ask.groups!)) {
+      for (final local in _droppedIndexes(chunk, ask.groups!, onMerge: onMerge)) {
         drops.add(indexes[local]);
       }
     }
@@ -100,9 +103,13 @@ class LlmDeduper {
   }
 
   /// 同游戏 + 同方向（开始 / 结束）才算一组；分组后按索引顺序稳定排序。
-  /// 这是对模型输出的硬校验：模型把并行的两个活动或配套的开始/结束两条
-  /// 放进同一组时，这里不会真的把它们合并。
-  static Set<int> _droppedIndexes(List<GameEvent> events, List<List<int>> groups) {
+  /// 这是对模型输出的硬校验：模型把并行的两个活动、同一版本的上线公告与维护公告，
+  /// 或配套的开始/结束两条放进同一组时，这里不会真的把它们合并。
+  static Set<int> _droppedIndexes(
+    List<GameEvent> events,
+    List<List<int>> groups, {
+    void Function(String message)? onMerge,
+  }) {
     final drop = <int>{};
     for (final raw in groups) {
       final members = <int>{};
@@ -127,9 +134,20 @@ class LlmDeduper {
         });
         final kept = <int>[];
         for (final i in bucket) {
-          if (kept.any((k) => _compatible(events[k], events[i]))) {
+          int? rep;
+          for (final k in kept) {
+            if (_compatible(events[k], events[i])) {
+              rep = k;
+              break;
+            }
+          }
+          if (rep != null) {
             // 同一组里信息最全的那条留下，其余算重复
             drop.add(i);
+            final line = '「${events[i].title}」${events[i].type} ${_fmt(events[i].start)}'
+                ' → 保留「${events[rep].title}」${events[rep].type} ${_fmt(events[rep].start)}';
+            debugPrint('[NijiCal][dedupe] $line');
+            onMerge?.call(line);
           } else {
             kept.add(i);
           }
@@ -139,21 +157,51 @@ class LlmDeduper {
     return drop;
   }
 
-  /// 同一件事的两次抽取，时间可能差几小时；差到两天以上就不当成同一条，
-  /// 宁可留两条也不把另一场活动删掉。没有开始时间就比结束时间。
+  /// 对模型分组的最后一道硬校验。
+  ///
+  /// 只靠「同游戏 + 同方向 + 48 小时内」会误合并：同一版本的上线公告（00:00）与
+  /// 维护公告（06:00–12:00）、两个不同角色的卡池（结束时间不同）都会被吞掉。
+  /// 现在按类型、标题相似度、开始时间与结束窗口分档：
+  ///   · 不同类型：必须是同一份公告被解析成两种类型——标题高度相似、开始时间差 ≤2 小时、
+  ///     结束窗口一致（都为空，或相差 ≤1 小时）；
+  ///   · 同类型且标题相似：允许开始时间差 ≤4 小时（模型抖动），结束时间允许一边缺失；
+  ///   · 同类型但标题不同：只接受同一时间窗的语义重复（如 Zenless LIVE / FES）。
   static bool _compatible(GameEvent a, GameEvent b) {
     final sa = a.start;
     final sb = b.start;
-    if (sa != null && sb != null) {
-      return sa.difference(sb).abs() <= const Duration(hours: 48);
+    final alike = _titlesAlike(a, b);
+
+    // 截止类事件没有开始时间：两边都得没有，且标题像、截止窗口一致
+    if (sa == null || sb == null) {
+      if (sa != null || sb != null) return false;
+      return alike && _sameWindow(a, b);
     }
+
+    final diff = sa.difference(sb).abs();
+    if (a.type != b.type) {
+      if (!alike) return false;
+      if (diff > const Duration(hours: 2)) return false;
+      return _sameWindow(a, b);
+    }
+
+    if (diff > const Duration(hours: 4)) return false;
+    if (alike) return true;
+    if (diff > const Duration(hours: 2)) return false;
+    return _sameWindow(a, b);
+  }
+
+  /// 结束窗口是否一致：都为空，或都有值且相差 ≤1 小时。
+  /// 不同改法的「同一件事」结束时间可能少一个，但不会差出几天。
+  static bool _sameWindow(GameEvent a, GameEvent b) {
     final ea = a.end ?? a.displayEnd;
     final eb = b.end ?? b.displayEnd;
-    if (ea != null && eb != null) {
-      return ea.difference(eb).abs() <= const Duration(hours: 48);
-    }
-    return true;
+    if (ea == null && eb == null) return true;
+    if (ea == null || eb == null) return false;
+    return ea.difference(eb).abs() <= const Duration(hours: 1);
   }
+
+  /// 标题指纹是否够像（复用规则去重那套：去游戏名 / 标点 / 泛用词后比较）
+  static bool _titlesAlike(GameEvent a, GameEvent b) => titlesSimilar(a.title, b.title);
 
   /// 开始类与结束类绝不互相合并：一条公告被拆成「开始 / 结束」两条是设计如此。
   static String _direction(GameEvent e) =>
@@ -243,12 +291,14 @@ class LlmDeduper {
             'role': 'system',
             'content': '你是二游日程审核员。只输出 JSON，形如 {"duplicates": [[0,3],[1,2]]}。\n'
                 '下面是一次刷新后得到的全部日程，每条有唯一索引 i。逐条比对，找出'
-                '「其实是同一件事」的重复：同一场活动 / 同一次停服维护 / 同一个版本更新 / '
-                '同一个卡池 / 同一个兑换码或补偿。\n'
-                '以下情况算重复：同一场活动的两种叫法（中文、英文、简称各写一遍）；'
+                '「其实是同一份公告、同一件事」的重复：同一场活动 / 同一次停服维护 / '
+                '同一个版本更新 / 同一个卡池 / 同一个兑换码或补偿。\n'
+                '以下情况算重复：同一份公告的两种叫法（中文、英文、简称各写一遍）；'
                 '同一份公告被两条动态各解析一次；标题复述日期与不复述日期；'
-                '开始时间相差几小时但明显是同一天同一件事。\n'
+                '同一份公告的一条写了结束时间、一条没写。\n'
                 '以下情况不是重复，绝对不要合并：\n'
+                '- 同一版本的上线公告与停服维护公告（一个讲版本内容、一个讲维护时间），'
+                '即使标题相近也是两件事；\n'
                 '- 同一条公告拆出的「开始」与「结束」两条（类型分别为 活动开始/活动结束 或 '
                 '卡池开始/卡池结束），它们是配套的两条；\n'
                 '- 同一天或同一时间的两个不同活动、两个不同角色的卡池、两个不同兑换码；\n'

@@ -272,6 +272,11 @@ DateTime? _windowEnd(GameEvent e) => e.end ?? e.displayEnd;
 @visibleForTesting
 bool titleSimilar(String a, String b) => _titleSimilar(a, b);
 
+/// 两个原始标题是否指向同一件事：先做标题指纹，再比较相似度。
+/// 供语义去重等生产代码使用，避免直接依赖 @visibleForTesting 的 [titleSimilar]。
+bool titlesSimilar(String a, String b) =>
+    _titleSimilar(titleFingerprint(a), titleFingerprint(b));
+
 bool _titleSimilar(String a, String b) {
   // 标题全是泛用词（如「版本更新上线」）时指纹为空：同游戏同类型同时间即视为同一条
   if (a.isEmpty || b.isEmpty) return a.isEmpty && b.isEmpty;

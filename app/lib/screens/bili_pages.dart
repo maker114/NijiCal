@@ -340,7 +340,11 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         // 连历史遗留、跨类型写法的重复一起清掉
         refine: (list) async {
           auditTotal = list.length;
-          final audit = await LlmDeduper.audit(list, config: config);
+          final audit = await LlmDeduper.audit(
+            list,
+            config: config,
+            onMerge: (line) => log.add('重复审核：$line'),
+          );
           auditRemoved = audit.removed;
           auditError = audit.error;
           return audit.events;

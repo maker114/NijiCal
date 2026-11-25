@@ -635,8 +635,9 @@ void main() {
     test('同游戏、同方向的重复只留信息最全的一条', () {
       final plain = _ev(
         id: 'b',
-        title: '绝区零 2026 FES 布梦嘉年华',
-        start: t.add(const Duration(hours: 3)),
+        title: 'FES',
+        start: t,
+        end: t.add(const Duration(days: 2)),
         gameId: 'zzz',
         type: '活动开始',
       );
@@ -653,6 +654,111 @@ void main() {
       ]);
       expect(out, hasLength(1));
       expect(out.single.id, 'a');
+    });
+
+    test('同一版本的上线公告与维护公告不合并', () {
+      final launch = _ev(
+        id: 'a',
+        title: '穿越甚大蘑境与你相逢版本上线',
+        start: t,
+        gameId: 'endfield',
+        type: '版本更新',
+      );
+      final maint = _ev(
+        id: 'b',
+        title: '穿越甚大蘑境与你相逢 版本更新维护',
+        start: t.add(const Duration(hours: 6)),
+        end: t.add(const Duration(hours: 12)),
+        gameId: 'endfield',
+        type: '停服维护',
+      );
+      expect(LlmDeduper.applyGroups([launch, maint], [
+        [0, 1],
+      ]), hasLength(2));
+    });
+
+    test('不同类型、标题不同的两条即使同时开始也不合并', () {
+      final launch = _ev(
+        id: 'a',
+        title: '穿越甚大蘑境与你相逢版本上线',
+        start: t,
+        gameId: 'endfield',
+        type: '版本更新',
+      );
+      final pool = _ev(
+        id: 'b',
+        title: '「锻砧、行囊与蜜糖」特许寻访开启',
+        start: t,
+        end: t.add(const Duration(days: 28)),
+        gameId: 'endfield',
+        type: '卡池开始',
+      );
+      expect(LlmDeduper.applyGroups([launch, pool], [
+        [0, 1],
+      ]), hasLength(2));
+    });
+
+    test('同类型、标题不同、结束时间不同的两个卡池不合并', () {
+      final a = _ev(
+        id: 'a',
+        title: '「锻砧、行囊与蜜糖」特许寻访开启',
+        start: t,
+        end: t.add(const Duration(days: 28)),
+        gameId: 'endfield',
+        type: '卡池开始',
+      );
+      final b = _ev(
+        id: 'b',
+        title: '「卡厄斯」限定寻访开启',
+        start: t,
+        end: t.add(const Duration(days: 20)),
+        gameId: 'endfield',
+        type: '卡池开始',
+      );
+      expect(LlmDeduper.applyGroups([a, b], [
+        [0, 1],
+      ]), hasLength(2));
+    });
+
+    test('不同类型、标题相近、同一时刻且都没结束 → 合并', () {
+      final a = _ev(
+        id: 'a',
+        title: '穿越甚大蘑境与你相逢版本上线',
+        start: t,
+        gameId: 'endfield',
+        type: '版本更新',
+      );
+      final b = _ev(
+        id: 'b',
+        title: '「穿越甚大蘑境与你相逢」版本上线',
+        start: t,
+        gameId: 'endfield',
+        type: '活动开始',
+      );
+      expect(LlmDeduper.applyGroups([a, b], [
+        [0, 1],
+      ]), hasLength(1));
+    });
+
+    test('同类型、标题相近、一条有结束一条没有 → 合并（模型抖动）', () {
+      final a = _ev(
+        id: 'a',
+        title: '3.4 版本「长日终尽」上线',
+        start: t,
+        end: t.add(const Duration(hours: 6)),
+        gameId: 'zzz',
+        type: '版本更新',
+      );
+      final b = _ev(
+        id: 'b',
+        title: '3.4版本「长日终尽」12月2日上线',
+        start: t,
+        gameId: 'zzz',
+        type: '版本更新',
+      );
+      expect(LlmDeduper.applyGroups([a, b], [
+        [0, 1],
+      ]), hasLength(1));
     });
 
     test('不同游戏即使模型放进同一组也不合并', () {
