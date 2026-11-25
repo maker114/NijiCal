@@ -176,8 +176,10 @@ class EventRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    // 当天、只给了日期没给时刻：一整天都算进行中，不能按 00:00 判成已过期
+    final ongoing = isOngoingAllDay(event);
     final urgency = urgencyOf(event.due);
-    final accentColor = UrgencyColors.ofContext(context).of(urgency);
+    final accentColor = ongoing ? scheme.primary : UrgencyColors.ofContext(context).of(urgency);
     final countdown = countdownOf(event.due);
     final gameColor = accent ?? game?.accent ?? scheme.primary;
     // 开始类事件带着原区间（displayEnd），直接把「开始 → 结束」显示出来
@@ -224,12 +226,12 @@ class EventRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  urgencyLabel(urgency),
+                  ongoing ? '进行中' : urgencyLabel(urgency),
                   style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: accentColor),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  countdown.text,
+                  ongoing ? '全天' : countdown.text,
                   style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],

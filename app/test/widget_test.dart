@@ -9,12 +9,14 @@ import 'package:nijical/model.dart';
 import 'package:nijical/services/update_service.dart';
 import 'package:nijical/services/auto_notify.dart';
 import 'package:nijical/services/event_diff.dart';
+import 'package:nijical/services/llm_deduper.dart';
 import 'package:nijical/services/llm_normalizer.dart';
 import 'package:nijical/services/prefs.dart';
 import 'package:nijical/services/reminder_service.dart';
 import 'package:nijical/screens/calendar_screen.dart';
 import 'package:nijical/services/uid.dart';
 import 'package:nijical/version.dart';
+import 'package:nijical/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 GameEvent _ev({
@@ -627,6 +629,94 @@ void main() {
       expect(dedupeEvents([a, b]), hasLength(2));
     });
   });
+  group('全量审核去重（模型分组 + 硬校验）', () {
+    final t = DateTime.parse('2026-11-27T19:30:00+08:00');
+
+    test('同游戏、同方向的重复只留信息最全的一条', () {
+      final plain = _ev(
+        id: 'b',
+        title: '绝区零 2026 FES 布梦嘉年华',
+        start: t.add(const Duration(hours: 3)),
+        gameId: 'zzz',
+        type: '活动开始',
+      );
+      final full = _ev(
+        id: 'a',
+        title: 'Zenless LIVE 2026',
+        start: t,
+        end: t.add(const Duration(days: 2)),
+        gameId: 'zzz',
+        type: '活动开始',
+      );
+      final out = LlmDeduper.applyGroups([plain, full], [
+        [0, 1],
+      ]);
+      expect(out, hasLength(1));
+      expect(out.single.id, 'a');
+    });
+
+    test('不同游戏即使模型放进同一组也不合并', () {
+      final a = _ev(id: 'a', title: '版本更新', start: t, gameId: 'zzz', type: '版本更新');
+      final b = _ev(id: 'b', title: '版本更新', start: t, gameId: 'arknights', type: '版本更新');
+      expect(LlmDeduper.applyGroups([a, b], [
+        [0, 1],
+      ]), hasLength(2));
+    });
+
+    test('同一条公告拆出的开始 / 结束两条不会被合并', () {
+      final start = _ev(id: 'p-start', title: '活动开启', start: t, gameId: 'zzz', type: '活动开始');
+      final end = _ev(
+        id: 'p-end',
+        title: '活动结束',
+        end: t.add(const Duration(days: 2)),
+        gameId: 'zzz',
+        type: '活动结束',
+      );
+      expect(LlmDeduper.applyGroups([start, end], [
+        [0, 1],
+      ]), hasLength(2));
+    });
+
+    test('开始时间相差两天以上的两条不合并', () {
+      final a = _ev(id: 'a', title: '活动开启', start: t, gameId: 'zzz', type: '活动开始');
+      final b = _ev(
+        id: 'b',
+        title: '活动开启',
+        start: t.add(const Duration(days: 3)),
+        gameId: 'zzz',
+        type: '活动开始',
+      );
+      expect(LlmDeduper.applyGroups([a, b], [
+        [0, 1],
+      ]), hasLength(2));
+    });
+
+    test('越界索引被忽略', () {
+      final a = _ev(id: 'a', title: '活动开启', start: t, gameId: 'zzz', type: '活动开始');
+      final b = _ev(id: 'b', title: '活动开启', start: t, gameId: 'zzz', type: '活动开始');
+      expect(LlmDeduper.applyGroups([a, b], [
+        [0, 9],
+      ]), hasLength(2));
+    });
+
+    test('没有模型时退回规则去重并带回原因', () async {
+      final a = _ev(id: 'a', title: '版本更新上线', start: t, gameId: 'zzz', type: '版本更新');
+      final b = _ev(
+        id: 'b',
+        title: '版本更新上线',
+        start: t.add(const Duration(minutes: 2)),
+        gameId: 'zzz',
+        type: '版本更新',
+      );
+      final result = await LlmDeduper.audit(
+        [a, b],
+        config: const LlmConfig(baseUrl: 'https://api.deepseek.com', apiKey: '', model: 'deepseek-chat'),
+      );
+      expect(result.events, hasLength(1));
+      expect(result.error, isNotNull);
+      expect(result.byModel, isFalse);
+    });
+  });
   group('自动刷新的播报档位', () {
     AutoNotice? notice(
       AutoNotifyMode mode, {
@@ -681,6 +771,98 @@ void main() {
       expect(await Prefs.loadAutoNotifyMode(), AutoNotifyMode.partial);
       await Prefs.saveAutoNotifyMode(AutoNotifyMode.full);
       expect(await Prefs.loadAutoNotifyMode(), AutoNotifyMode.full);
+    });
+  });
+  group('当天无具体时刻算进行中', () {
+    final today = todayKey();
+    final start = DateTime.parse('${today}T00:00:00+08:00');
+    final now = DateTime.parse('${today}T14:00:00+08:00');
+
+    test('只给日期（00:00）→ 全天，而不是 00:00 一过就过期', () {
+      final event = _ev(id: 'a', title: '版本上线', start: start, type: '版本更新');
+      expect(isAllDay(event.start), isTrue);
+      expect(isOngoingAllDay(event, now: now), isTrue);
+    });
+
+    test('明确写了 04:00 → 不是全天', () {
+      final event = _ev(
+        id: 'a',
+        title: '活动开启',
+        start: DateTime.parse('${today}T04:00:00+08:00'),
+      );
+      expect(isAllDay(event.start), isFalse);
+      expect(isOngoingAllDay(event, now: now), isFalse);
+    });
+
+    test('昨天的 00:00 不算今天进行中', () {
+      final event = _ev(
+        id: 'a',
+        title: '昨天的活动',
+        start: start.subtract(const Duration(days: 1)),
+        type: '版本更新',
+      );
+      expect(isOngoingAllDay(event, now: now), isFalse);
+    });
+
+    test('今天 00:00 开始、明天结束 → 进行中', () {
+      final event = _ev(
+        id: 'a',
+        title: '活动开启',
+        start: start,
+        end: DateTime.parse('${today}T23:59:00+08:00').add(const Duration(days: 1)),
+        type: '活动开始',
+      );
+      expect(isOngoingAllDay(event, now: now), isTrue);
+    });
+
+    test('今天 00:00 开始、中午已经结束 → 只要还在当天就仍算进行中', () {
+      final event = _ev(
+        id: 'a',
+        title: '活动开启',
+        start: start,
+        end: DateTime.parse('${today}T12:00:00+08:00'),
+        type: '活动开始',
+      );
+      expect(isOngoingAllDay(event, now: now), isTrue);
+    });
+
+    testWidgets('列表行显示「进行中 / 全天」而不是「已过期」', (tester) async {
+      final event = _ev(id: 'a', title: '版本上线', start: start, type: '版本更新');
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: EventRow(event: event, game: null, onTap: () {})),
+      ));
+      expect(find.text('进行中'), findsOneWidget);
+      expect(find.text('全天'), findsOneWidget);
+      expect(find.text('已过期'), findsNothing);
+    });
+
+    test('进行中的全天事件不会被塞进「已过期」', () {
+      final state = AppState();
+      state.data = NijiData(
+        dataMode: 'live',
+        sampleNotice: '',
+        builtAt: '',
+        typeOrder: const [],
+        alarms: const {},
+        games: const [
+          Game(id: 'zzz', name: '绝区零', short: '绝区零', accent: Color(0xFFB58F6E)),
+        ],
+        events: const [],
+      );
+      final ongoing = _ev(id: 'a', title: '版本上线', start: start, gameId: 'zzz', type: '版本更新');
+      final past = _ev(
+        id: 'b',
+        title: '旧活动',
+        start: start.subtract(const Duration(days: 2)),
+        end: start.subtract(const Duration(days: 1)),
+        gameId: 'zzz',
+        type: '版本更新',
+      );
+      state.liveEvents = [ongoing, past];
+      state.range = RangeFilter.month;
+
+      expect(state.expiredEvents().map((e) => e.id), ['b']);
+      expect(state.visibleEvents().any((e) => e.id == 'a'), isTrue);
     });
   });
   group('日历圆环按事件占比', () {

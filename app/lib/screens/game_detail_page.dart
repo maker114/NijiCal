@@ -311,8 +311,13 @@ class GameDetailPage extends StatelessWidget {
         final accent = state.gameAccentOf(game);
         final all = state.visibleEventsOf(game.id);
         final now = DateTime.now();
-        final upcoming = all.where((e) => !e.due.isBefore(now)).toList();
-        final expired = all.where((e) => e.due.isBefore(now)).toList();
+        // 当天、没给具体时刻的全天事件算「进行中」，放在上面而不是已过期
+        final upcoming = all
+            .where((e) => !e.due.isBefore(now) || isOngoingAllDay(e, now: now))
+            .toList();
+        final expired = all
+            .where((e) => e.due.isBefore(now) && !isOngoingAllDay(e, now: now))
+            .toList();
         final uid = state.bindings[game.id];
         final version = state.latestVersionOf(game.id);
         final updated = all

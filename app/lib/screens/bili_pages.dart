@@ -328,12 +328,23 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
         for (final entry in stats.entries)
           if (entry.value.error != null) entry.key,
       };
+      var auditRemoved = 0;
+      var auditTotal = 0;
+      String? auditError;
+      _progress('审核全部日程，合并重复内容', game: gameTotal, item: 0, itemTotal: 0);
       final changes = await widget.state.applyLive(
         events.values.toList(),
         onlyGame: widget.onlyGameId,
         preserveGameIds: failedGames,
-        // 入库前对最终列表做语义去重：连历史遗留的重复一起清掉
-        refine: (list) => LlmDeduper.dedupeSemantically(list, config: config),
+        // 每次刷新完成后，对最终列表做一次全量审核：把整份日程交给大模型去重，
+        // 连历史遗留、跨类型写法的重复一起清掉
+        refine: (list) async {
+          auditTotal = list.length;
+          final audit = await LlmDeduper.audit(list, config: config);
+          auditRemoved = audit.removed;
+          auditError = audit.error;
+          return audit.events;
+        },
       );
       final afterEvents = widget.state.liveEvents
           .where((e) => widget.onlyGameId == null || e.gameId == widget.onlyGameId)
@@ -387,12 +398,20 @@ class _BiliRefreshDialogState extends State<BiliRefreshDialog> {
           ? '｜${stored.length} 条全是截止类事件，已被「显示截止事件」开关隐藏'
           : '';
       currentGameId = null;
+      if (auditError != null) {
+        log.add('重复审核：$auditError（已退回规则去重）');
+      } else {
+        log.add('重复审核：$auditTotal 条${auditRemoved > 0 ? '，合并 $auditRemoved 条' : '，无重复'}');
+      }
+      final auditNote = auditError != null
+          ? '｜重复审核失败，已退回规则'
+          : '｜已审核 $auditTotal 条${auditRemoved > 0 ? '，合并 $auditRemoved 条重复' : '，无重复'}';
       // 失败账号保留旧事件的提示
       final failNote = failedGames.isEmpty
           ? ''
           : '｜${failedGames.length} 个号失败，已保留其原有日程';
       _finish('拉取完成，入库 $storedCount 条，新增 $newCount 条，删除 $removedCount 条'
-          '${changes.isEmpty ? '' : '；改期 ${changes.length} 项'}$failNote$hiddenNote');
+          '${changes.isEmpty ? '' : '；改期 ${changes.length} 项'}$failNote$hiddenNote$auditNote');
     } catch (e) {
       _finish('失败：${'$e'.split('\n').first}');
     }

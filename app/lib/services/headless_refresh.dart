@@ -87,8 +87,10 @@ class HeadlessRefresh {
       final ids = fresh.map((e) => e.id).toSet();
       final kept = stored.where((e) => !ids.contains(e.id));
       var next = backfillRanges([...merged.events, ...kept]);
-      // 语义去重：同一件事的多种说法只留一条（含历史遗留重复；模型不可用就退回纯规则）
-      next = backfillRanges(await LlmDeduper.dedupeSemantically(next, config: config));
+      // 每次刷新完成后都做一次全量审核：把整份日程交给大模型，去掉重复内容
+      final audit = await LlmDeduper.audit(next, config: config);
+      next = backfillRanges(audit.events);
+      if (audit.error != null) diag.add('重复审核：${audit.error}（已退回规则去重）');
       await Prefs.saveLiveEvents(next.map((e) => e.toJson()).toList());
       await Prefs.saveLiveFetchedAt(startedAt);
 
@@ -96,6 +98,7 @@ class HeadlessRefresh {
       final added = afterIds.difference(beforeIds).length;
       final removed = beforeIds.difference(afterIds).length;
       final summary = '入库 ${next.length} 条，新增 $added 条，删除 $removed 条'
+          '${audit.removed > 0 ? '，合并重复 ${audit.removed} 条' : ''}'
           '${merged.changes.isEmpty ? '' : '，改期 ${merged.changes.length} 项'}'
           '${failed > 0 ? '，$failed 个号失败' : ''}';
       return HeadlessResult(

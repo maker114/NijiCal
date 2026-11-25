@@ -260,11 +260,16 @@ class AppState extends ChangeNotifier {
     if (e.predicted) return true;
 
     final due = e.due;
+    final now = DateTime.now();
     final h = hoursUntil(due);
+    // 当天、只给了日期没给时刻的事件：00:00 已经过去，但一整天都算进行中
+    final ongoingToday = isOngoingAllDay(e, now: now);
     return switch (range) {
-      RangeFilter.today => !due.isBefore(DateTime.now()) && due.isBefore(endOfToday),
-      RangeFilter.week => !due.isBefore(DateTime.now()) && due.isBefore(endOfWeek),
-      RangeFilter.month => h >= 0 && h <= 24 * 30,
+      RangeFilter.today =>
+        (!due.isBefore(now) || ongoingToday) && due.isBefore(endOfToday),
+      RangeFilter.week =>
+        (!due.isBefore(now) || ongoingToday) && due.isBefore(endOfWeek),
+      RangeFilter.month => (h >= 0 || ongoingToday) && h <= 24 * 30,
       RangeFilter.all => true,
     };
   }
@@ -410,10 +415,11 @@ class AppState extends ChangeNotifier {
       .toList();
   /// 已过期的事件：只受游戏/标签与截止开关影响，不受「范围」限制，
   /// 否则默认 30 天范围会把它们全过滤掉，列表里的「已过期」永远为空。
+  /// 当天且没给具体时刻的全天事件不算过期，它们由「进行中」接管。
   List<GameEvent> expiredEvents() {
     final now = DateTime.now();
     final list = allEvents
-        .where((e) => e.due.isBefore(now))
+        .where((e) => e.due.isBefore(now) && !isOngoingAllDay(e, now: now))
         .where((e) => selectedGames.isEmpty || selectedGames.contains(e.gameId))
         .where((e) => selectedTags.isEmpty ||
             selectedTags

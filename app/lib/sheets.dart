@@ -192,8 +192,9 @@ Future<void> showAppearanceSheet(BuildContext context, ThemeController controlle
 Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent event) {
   final game = state.gameMap[event.gameId];
   final theme = Theme.of(context);
+  final ongoing = isOngoingAllDay(event);
   final urgency = urgencyOf(event.due);
-  final accent = UrgencyColors.ofContext(context).of(urgency);
+  final accent = ongoing ? theme.colorScheme.primary : UrgencyColors.ofContext(context).of(urgency);
 
   return _showSheet<void>(
     context,
@@ -213,7 +214,7 @@ Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent eve
             const SizedBox(width: 6),
             Tag(text: event.status.label),
             const SizedBox(width: 6),
-            Text(urgencyLabel(urgency), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: accent)),
+            Text(ongoing ? '进行中' : urgencyLabel(urgency), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: accent)),
             const Spacer(),
             IconButton(
               tooltip: '关闭',
@@ -236,7 +237,7 @@ Future<void> showDetailSheet(BuildContext context, AppState state, GameEvent eve
         _MetaRow(label: '类型', value: event.type),
         if ((event.version ?? '').isNotEmpty) _MetaRow(label: '版本', value: event.version!),
         _MetaRow(label: '时间', value: eventRange(event.start, event.end ?? event.displayEnd)),
-        _MetaRow(label: '剩余', value: countdownOf(event.due).text),
+        _MetaRow(label: '剩余', value: ongoing ? '全天' : countdownOf(event.due).text),
 
         const SizedBox(height: 18),
         if (event.tags.isNotEmpty) ...[

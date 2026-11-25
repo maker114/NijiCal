@@ -44,6 +44,40 @@ Countdown countdownOf(DateTime due) {
   return Countdown('还有 $days 天', 3);
 }
 
+/// 原文只写了日期、没写具体时刻：模型会把这类公告落成当天的 00:00。
+///
+/// 注意这是「推断」而不是精确值 —— `GameEvent` 里没有额外的精度字段，
+/// 所以只能用 00:00 这个约定当“全天”的标记（真正的 00:00 事件极少）。
+bool isAllDay(DateTime? t) {
+  if (t == null) return false;
+  final w = wall(t);
+  return w.hour == 0 && w.minute == 0;
+}
+
+/// 事件发生在今天、且没有具体时刻 —— 一整天都算「进行中」，
+/// 不该在 00:00 一过就显示成「已过期」。
+///
+/// 开始时间给了日期没给时刻的全天事件：只要开始日还是今天，就整天算进行中，
+/// 不再拿结束时刻卡它（只给日期的公告，结束也可能是当天 00:00 / 23:59 的约定值）；
+/// 只有截止日的全天事件：截止日就是今天。
+bool isOngoingAllDay(GameEvent e, {DateTime? now}) {
+  final current = now ?? DateTime.now();
+  final today = wall(current);
+  bool sameDay(DateTime? t) {
+    if (t == null) return false;
+    final w = wall(t);
+    return w.year == today.year && w.month == today.month && w.day == today.day;
+  }
+
+  final start = e.start;
+  if (start != null) {
+    return sameDay(start) && isAllDay(start);
+  }
+  // 只有截止时间（start == null）且没给具体时刻：整个截止日都算进行中
+  final end = e.end;
+  return end != null && sameDay(end) && isAllDay(end);
+}
+
 String reminderText(List<int> offsets) {
   final parts = offsets.map((m) {
     final v = -m;

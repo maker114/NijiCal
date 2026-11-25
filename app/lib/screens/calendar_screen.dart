@@ -44,7 +44,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildList(BuildContext context, List<GameEvent> events, Map<String, Game> games) {
     final theme = Theme.of(context);
     final now = DateTime.now();
-    final upcoming = events.where((e) => !e.due.isBefore(now)).toList()
+    // 当天、没给具体时刻的全天事件也算「接下来」，否则它会被塞进已过期折叠区
+    final upcoming = events
+        .where((e) => !e.due.isBefore(now) || isOngoingAllDay(e, now: now))
+        .toList()
       ..sort((a, b) => a.due.compareTo(b.due));
     final expired = widget.state.expiredEvents()
       ..sort((a, b) => b.due.compareTo(a.due));
@@ -448,4 +451,5 @@ class _DayCell extends StatelessWidget {
   }
 }
 /// 事件是否已经过去（只用来决定日历上的颜色）
-bool _isPast(GameEvent event) => event.due.isBefore(DateTime.now());
+bool _isPast(GameEvent event) =>
+    event.due.isBefore(DateTime.now()) && !isOngoingAllDay(event);
