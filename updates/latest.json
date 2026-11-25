@@ -1,7 +1,7 @@
 {
-  "version": "2.17.0",
-  "versionCode": 81,
-  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.17.0/NijiCal-2.17.0.apk",
-  "publishedAt": "2026-11-20",
-  "notes": "- 日历圆环按事件条数占比分段（A两条B/C各一条=180/90/90）\n- 新增单游戏独立刷新，只拉一个官号\n- 修同一事件重复录入：标题指纹+容差聚类+大模型语义去重\n- 版本号一致性每日CI兜底"
+  "version": "2.18.0",
+  "versionCode": 82,
+  "apkUrl": "https://github.com/maker114/NijiCal/releases/download/v2.18.0/NijiCal-2.18.0.apk",
+  "publishedAt": "2026-11-25",
+  "notes": "- 自动刷新播报改成三档，默认静默\n- 刷新后把整份日程交给大模型审核去重\n- 当天没给具体时刻的事件显示「进行中 / 全天」\n- 修复全量审核误合并：版本上线/维护公告、不同卡池不再被吞"
 }
