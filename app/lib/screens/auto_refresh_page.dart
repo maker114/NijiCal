@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../services/auto_notify.dart';
 import '../services/auto_refresh.dart';
 import '../services/power_helper.dart';
 import '../services/prefs.dart';
 import '../theme.dart';
 
-/// 自动刷新设置：开关、每天的时间点（就是「次数」）、以及后台保活引导。
+/// 自动刷新设置：开关、每天的时间点（就是「次数」）、播报档位，以及后台保活引导。
 class AutoRefreshPage extends StatefulWidget {
   const AutoRefreshPage({super.key, required this.onChanged});
 
@@ -19,6 +20,7 @@ class AutoRefreshPage extends StatefulWidget {
 class _AutoRefreshPageState extends State<AutoRefreshPage> {
   bool enabled = false;
   List<String> times = const ['12:30', '19:30'];
+  AutoNotifyMode notifyMode = AutoNotifyMode.silent;
   String? lastSlot;
   bool ignoringBattery = false;
   bool busy = false;
@@ -35,6 +37,7 @@ class _AutoRefreshPageState extends State<AutoRefreshPage> {
   Future<void> _load() async {
     final e = await Prefs.loadAutoEnabled();
     final t = await Prefs.loadAutoTimes();
+    final mode = await Prefs.loadAutoNotifyMode();
     final last = await Prefs.loadAutoLastSlot();
     final res = await Prefs.loadAutoResult();
     final ignoring = await PowerHelper.isIgnoringBattery();
@@ -42,11 +45,18 @@ class _AutoRefreshPageState extends State<AutoRefreshPage> {
     setState(() {
       enabled = e;
       times = t;
+      notifyMode = mode;
       lastSlot = last;
       lastResult = res.text;
       lastResultAt = res.at;
       ignoringBattery = ignoring;
     });
+  }
+
+  Future<void> _setNotifyMode(AutoNotifyMode mode) async {
+    await Prefs.saveAutoNotifyMode(mode);
+    if (!mounted) return;
+    setState(() => notifyMode = mode);
   }
 
   Future<void> _saveTimes() async {
@@ -148,6 +158,44 @@ class _AutoRefreshPageState extends State<AutoRefreshPage> {
                   Text(
                     'WorkManager 每 15 分钟醒一次，到点后 25 分钟内补跑，不保证分秒准点。',
                     style: theme.textTheme.labelSmall,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('跑完播报', style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 4),
+                  Text(
+                    '后台跑完一轮时要不要弹系统通知。默认不弹 —— '
+                    '每天两条「刷新完成」只会把通知栏占满，容易连改期提醒一起被关掉。',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final mode in AutoNotifyMode.values)
+                        ChoiceChip(
+                          label: Text(mode.label),
+                          selected: notifyMode == mode,
+                          onSelected: (_) => _setNotifyMode(mode),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    notifyMode.hint,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

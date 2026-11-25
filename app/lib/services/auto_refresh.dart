@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
+import 'auto_notify.dart';
 import 'headless_refresh.dart';
 import 'prefs.dart';
 import 'reminder_service.dart';
@@ -79,6 +80,25 @@ class AutoRefresh {
     return result;
   }
 
+  /// 按设置里的播报档位决定要不要弹通知（默认不弹）。
+  /// 结果摘要不论哪一档都会记进 Prefs，设置页的「上次结果」始终能看到。
+  static Future<void> report(HeadlessResult result, {required String source}) async {
+    final notice = AutoNotify.noticeFor(
+      mode: await Prefs.loadAutoNotifyMode(),
+      ok: result.ok,
+      message: result.message,
+      added: result.added,
+      removed: result.removed,
+      source: source,
+    );
+    if (notice == null) return;
+    try {
+      await ReminderService.notifyNow(title: notice.title, body: notice.body);
+    } catch (_) {
+      // 通知权限被关 / 插件不可用：不能因为播报不了就连刷新结果都丢掉
+    }
+  }
+
   /// 前台兜底：App 活着时用计时器盯，不必等系统唤醒
   static Timer? _timer;
 
@@ -92,11 +112,10 @@ class AutoRefresh {
       await Prefs.saveAutoLastSlot(slot);
       final result = await HeadlessRefresh.run();
       await Prefs.saveAutoResult(result.message);
-      await ReminderService.notifyNow(
-        title: result.ok ? 'NijiCal 自动刷新完成' : 'NijiCal 自动刷新失败',
-        body: result.message,
-      );
+      // 必须先让外壳重排提醒再播报：重排走 ReminderService.schedule()，
+      // 那里第一件事是 cancelAll()，先播报会被它当场擦掉。
       await onRan();
+      await AutoRefresh.report(result, source: '自动刷新');
     });
   }
 
@@ -121,12 +140,7 @@ void callbackDispatcher() {
     await Prefs.saveAutoLastSlot(slot);
     final result = await HeadlessRefresh.run();
     await Prefs.saveAutoResult(result.message);
-    try {
-      await ReminderService.notifyNow(
-        title: result.ok ? 'NijiCal 定时刷新完成' : 'NijiCal 定时刷新失败',
-        body: result.message,
-      );
-    } catch (_) {}
+    await AutoRefresh.report(result, source: '定时刷新');
     return true;
   });
 }

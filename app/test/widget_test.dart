@@ -7,8 +7,10 @@ import 'package:nijical/format.dart';
 import 'package:nijical/main.dart';
 import 'package:nijical/model.dart';
 import 'package:nijical/services/update_service.dart';
+import 'package:nijical/services/auto_notify.dart';
 import 'package:nijical/services/event_diff.dart';
 import 'package:nijical/services/llm_normalizer.dart';
+import 'package:nijical/services/prefs.dart';
 import 'package:nijical/services/reminder_service.dart';
 import 'package:nijical/screens/calendar_screen.dart';
 import 'package:nijical/services/uid.dart';
@@ -623,6 +625,62 @@ void main() {
       final a = _ev(id: 'a', title: '活动开启', start: DateTime.parse('2026-11-21T10:00:00+08:00'));
       final b = _ev(id: 'b', title: '活动开启', start: DateTime.parse('2026-11-21T20:00:00+08:00'));
       expect(dedupeEvents([a, b]), hasLength(2));
+    });
+  });
+  group('自动刷新的播报档位', () {
+    AutoNotice? notice(
+      AutoNotifyMode mode, {
+      bool ok = true,
+      int added = 0,
+      int removed = 0,
+      String message = '入库 12 条，新增 3 条，删除 1 条（绝区零: code=0 拉到=12 送解析=8 通过=5 未通过=3）',
+    }) =>
+        AutoNotify.noticeFor(
+          mode: mode,
+          ok: ok,
+          message: message,
+          added: added,
+          removed: removed,
+          source: '定时刷新',
+        );
+
+    test('没设置过 / 越界 → 静默', () {
+      expect(AutoNotifyMode.fromCode(null), AutoNotifyMode.silent);
+      expect(AutoNotifyMode.fromCode(-1), AutoNotifyMode.silent);
+      expect(AutoNotifyMode.fromCode(9), AutoNotifyMode.silent);
+      expect(AutoNotifyMode.silent.code, 0);
+    });
+
+    test('不播报：成功、失败都一条都不弹', () {
+      expect(notice(AutoNotifyMode.silent, added: 5, removed: 3), isNull);
+      expect(notice(AutoNotifyMode.silent, ok: false, message: '没有登录态，自动刷新跳过'), isNull);
+    });
+
+    test('部分播报：只有增删才弹，且只报这两个条数', () {
+      final both = notice(AutoNotifyMode.partial, added: 3, removed: 1)!;
+      expect(both.title, 'NijiCal 日程有更新');
+      expect(both.body, '新增 3 条｜删除 1 条');
+      expect(notice(AutoNotifyMode.partial, added: 2)!.body, '新增 2 条');
+      expect(notice(AutoNotifyMode.partial, removed: 4)!.body, '删除 4 条');
+      // 改期 / 合并重复但没有条目增删时，部分播报也闭嘴
+      expect(notice(AutoNotifyMode.partial, message: '入库 12 条，新增 0 条，删除 0 条，改期 2 项'), isNull);
+    });
+
+    test('完整播报：每次都弹完整摘要，失败也说清楚', () {
+      final okNotice = notice(AutoNotifyMode.full, added: 3, removed: 1)!;
+      expect(okNotice.title, 'NijiCal 定时刷新完成');
+      expect(okNotice.body, contains('通过=5 未通过=3'));
+      final failNotice = notice(AutoNotifyMode.full, ok: false, message: '没有登录态，自动刷新跳过')!;
+      expect(failNotice.title, 'NijiCal 定时刷新失败');
+      expect(failNotice.body, '没有登录态，自动刷新跳过');
+    });
+
+    test('档位存在本机，读回来跟存进去一致', () async {
+      expect(await Prefs.loadAutoNotifyMode(), AutoNotifyMode.silent);
+      await Prefs.saveAutoNotifyMode(AutoNotifyMode.partial);
+      expect(await Prefs.loadAutoNotifyMode(), AutoNotifyMode.partial);
+      await Prefs.saveAutoNotifyMode(AutoNotifyMode.full);
+      expect(await Prefs.loadAutoNotifyMode(), AutoNotifyMode.full);
     });
   });
   group('日历圆环按事件占比', () {

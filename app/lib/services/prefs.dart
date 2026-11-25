@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../model.dart';
+import 'auto_notify.dart';
 
 /// 本机持久化：官号绑定、提醒开关。全部存在设备上，不联网。
 abstract class Prefs {
@@ -206,6 +207,19 @@ abstract class Prefs {
   static Future<void> saveAutoEnabled(bool value) async {
     final sp = await SharedPreferences.getInstance();
     await sp.setBool(_autoEnabledKey, value);
+  }
+
+  // 跑完之后的播报档位；没设置过 = 不播报
+  static const _autoNotifyKey = 'nijical.auto.notifyMode';
+
+  static Future<AutoNotifyMode> loadAutoNotifyMode() async {
+    final sp = await SharedPreferences.getInstance();
+    return AutoNotifyMode.fromCode(sp.getInt(_autoNotifyKey));
+  }
+
+  static Future<void> saveAutoNotifyMode(AutoNotifyMode mode) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setInt(_autoNotifyKey, mode.code);
   }
 
   static Future<List<String>> loadAutoTimes() async {

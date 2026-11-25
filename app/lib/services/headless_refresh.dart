@@ -49,18 +49,24 @@ class HeadlessRefresh {
       var failed = 0;
 
       for (final entry in bindings.entries) {
+        final game = entry.key;
         try {
           final res = await _fetchSpace(cookies, entry.value, maxPosts);
           final picked = _prefilter(res.items, maxPosts);
-          diag.add('${entry.key}: code=${res.code} 拉到=${res.items.length} 送解析=${picked.length}');
+          var passed = 0;
           for (final item in picked) {
             try {
-              final event = await _normalize(item, entry.key, config);
-              if (event != null) fresh.addAll(event);
+              final event = await _normalize(item, game, config);
+              if (event != null) {
+                fresh.addAll(event);
+                passed++;
+              }
             } catch (e) {
               diag.add('解析异常: ${'$e'.split('\n').first}');
             }
           }
+          diag.add('$game: code=${res.code} 拉到=${res.items.length} 送解析=${picked.length} '
+              '通过=$passed 未通过=${picked.length - passed}');
           await Future<void>.delayed(const Duration(milliseconds: 1500));
         } catch (_) {
           failed++;
@@ -76,6 +82,7 @@ class HeadlessRefresh {
       }
 
       final stored = (await Prefs.loadLiveEvents()).map(GameEvent.fromJson).toList();
+      final beforeIds = {for (final e in stored) e.id};
       final merged = mergeEvents(stored, fresh, startedAt);
       final ids = fresh.map((e) => e.id).toSet();
       final kept = stored.where((e) => !ids.contains(e.id));
@@ -85,10 +92,18 @@ class HeadlessRefresh {
       await Prefs.saveLiveEvents(next.map((e) => e.toJson()).toList());
       await Prefs.saveLiveFetchedAt(startedAt);
 
-      final summary = '${next.length} 条事件'
+      final afterIds = {for (final e in next) e.id};
+      final added = afterIds.difference(beforeIds).length;
+      final removed = beforeIds.difference(afterIds).length;
+      final summary = '入库 ${next.length} 条，新增 $added 条，删除 $removed 条'
           '${merged.changes.isEmpty ? '' : '，改期 ${merged.changes.length} 项'}'
           '${failed > 0 ? '，$failed 个号失败' : ''}';
-      return HeadlessResult(ok: true, message: '$summary（${diag.join(' / ')}）');
+      return HeadlessResult(
+        ok: true,
+        message: '$summary（${diag.join(' / ')}）',
+        added: added,
+        removed: removed,
+      );
     } catch (e) {
       return HeadlessResult(ok: false, message: '自动刷新失败：${'$e'.split('\n').first}');
     }
@@ -294,7 +309,21 @@ class HeadlessRefresh {
 }
 
 class HeadlessResult {
-  const HeadlessResult({required this.ok, required this.message});
+  const HeadlessResult({
+    required this.ok,
+    required this.message,
+    this.added = 0,
+    this.removed = 0,
+  });
+
   final bool ok;
+
+  /// 完整播报用的一行摘要（含每款游戏的拉取 / 通过 / 未通过）
   final String message;
+
+  /// 这一轮新增的事件条数（按 id 比）
+  final int added;
+
+  /// 这一轮删除的事件条数
+  final int removed;
 }
